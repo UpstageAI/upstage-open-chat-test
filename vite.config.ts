@@ -39,5 +39,22 @@ export default defineConfig({
 	},
 	worker: {
 		format: 'es'
+	},
+	server: {
+		proxy: {
+			'/api': {
+				target: 'https://upstage-open-chat.win',
+				changeOrigin: true,
+				//rewrite: (path) => path.replace(/^\/api/, '')
+			},
+			'/ollama': {
+				target: 'https://upstage-open-chat.win',
+				changeOrigin: true
+			},
+			'/openai': {
+				target: 'https://upstage-open-chat.win',
+				changeOrigin: true
+			}
+		}
 	}
 });
