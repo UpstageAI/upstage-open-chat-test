@@ -14,23 +14,8 @@
 
 	let webConfig = null;
 	let webSearchEngines = [
-		'searxng',
-		'google_pse',
-		'brave',
-		'kagi',
-		'mojeek',
-		'bocha',
-		'serpstack',
-		'serper',
-		'serply',
-		'searchapi',
-		'serpapi',
-		'duckduckgo',
-		'tavily',
-		'jina',
-		'bing',
-		'exa',
-		'perplexity'
+		'Naver',
+		'Daum',
 	];
 
 	let youtubeLanguage = 'en';
