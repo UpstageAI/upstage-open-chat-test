@@ -823,6 +823,61 @@ OLLAMA_API_CONFIGS = PersistentConfig(
 )
 
 ####################################
+# UPSTAGE_API
+####################################
+
+ENABLE_UPSTAGE_API = PersistentConfig(
+    "ENABLE_UPSTAGE_API",
+    "upstage.enable",
+    os.environ.get("ENABLE_UPSTAGE_API", "True").lower() == "true",
+)
+
+UPSTAGE_API_KEY = os.environ.get("UPSTAGE_API_KEY", "")
+UPSTAGE_API_BASE_URL = os.environ.get("UPSTAGE_API_BASE_URL", "")
+
+
+if UPSTAGE_API_BASE_URL == "":
+    UPSTAGE_API_BASE_URL = "https://api.upstage.ai/v1"
+
+UPSTAGE_API_KEYS = os.environ.get("UPSTAGE_API_KEYS", "")
+UPSTAGE_API_KEYS = UPSTAGE_API_KEYS if UPSTAGE_API_KEYS != "" else UPSTAGE_API_KEY
+
+UPSTAGE_API_KEYS = [url.strip() for url in UPSTAGE_API_KEYS.split(";")]
+UPSTAGE_API_KEYS = PersistentConfig(
+    "UPSTAGE_API_KEYS", "upstage.api_keys", UPSTAGE_API_KEYS
+)
+
+UPSTAGE_API_BASE_URLS = os.environ.get("UPSTAGE_API_BASE_URLS", "")
+UPSTAGE_API_BASE_URLS = (
+    UPSTAGE_API_BASE_URLS if UPSTAGE_API_BASE_URLS != "" else UPSTAGE_API_BASE_URL
+)
+
+UPSTAGE_API_BASE_URLS = [
+    url.strip() if url != "" else "https://api.upstage.ai/v1"
+    for url in UPSTAGE_API_BASE_URLS.split(";")
+]
+UPSTAGE_API_BASE_URLS = PersistentConfig(
+    "UPSTAGE_API_BASE_URLS", "upstage.api_base_urls", UPSTAGE_API_BASE_URLS
+)
+
+UPSTAGE_API_CONFIGS = PersistentConfig(
+    "UPSTAGE_API_CONFIGS",
+    "upstage.api_configs",
+    {},
+)
+
+# Get the actual OpenAI API key based on the base URL
+UPSTAGE_API_KEY = ""
+try:
+    UPSTAGE_API_KEY = UPSTAGE_API_KEYS.value[
+        UPSTAGE_API_BASE_URLS.value.index("https://api.upstage.ai/v1")
+    ]
+except Exception:
+    pass
+UPSTAGE_API_BASE_URL = "https://api.upstage.ai/v1"
+
+
+####################################
 # OPENAI_API
 ####################################
 

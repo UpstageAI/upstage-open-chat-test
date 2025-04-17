@@ -88,6 +88,7 @@ log_sources = [
     "MODELS",
     "OLLAMA",
     "OPENAI",
+    "UPSTAGE",
     "RAG",
     "WEBHOOK",
     "SOCKET",

@@ -76,6 +76,7 @@ from open_webui.routers import (
     tools,
     users,
     utils,
+    upstage,
 )
 
 from open_webui.routers.retrieval import (
@@ -103,6 +104,11 @@ from open_webui.config import (
     OPENAI_API_BASE_URLS,
     OPENAI_API_KEYS,
     OPENAI_API_CONFIGS,
+    # Upstage
+    ENABLE_UPSTAGE_API,
+    UPSTAGE_API_KEYS,
+    UPSTAGE_API_BASE_URLS,
+    UPSTAGE_API_CONFIGS,
     # Direct Connections
     ENABLE_DIRECT_CONNECTIONS,
     # Tool Server Configs
@@ -480,6 +486,20 @@ app.state.config.OPENAI_API_KEYS = OPENAI_API_KEYS
 app.state.config.OPENAI_API_CONFIGS = OPENAI_API_CONFIGS
 
 app.state.OPENAI_MODELS = {}
+
+
+########################################
+#
+# UPSTAGE
+#
+########################################
+
+app.state.config.ENABLE_UPSTAGE_API = ENABLE_UPSTAGE_API
+app.state.config.UPSTAGE_API_BASE_URLS = UPSTAGE_API_BASE_URLS
+app.state.config.UPSTAGE_API_KEYS = UPSTAGE_API_KEYS
+app.state.config.UPSTAGE_API_CONFIGS = UPSTAGE_API_CONFIGS
+
+app.state.UPSTAGE_MODELS = {}
 
 ########################################
 #
@@ -917,6 +937,7 @@ app.add_middleware(
 app.mount("/ws", socket_app)
 
 
+app.include_router(upstage.router, prefix="/upstage", tags=["upstage"])
 app.include_router(ollama.router, prefix="/ollama", tags=["ollama"])
 app.include_router(openai.router, prefix="/openai", tags=["openai"])
 
