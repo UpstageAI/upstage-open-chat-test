@@ -1882,7 +1882,8 @@ PDF_EXTRACT_IMAGES = PersistentConfig(
 RAG_EMBEDDING_MODEL = PersistentConfig(
     "RAG_EMBEDDING_MODEL",
     "rag.embedding_model",
-    os.environ.get("RAG_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+    # os.environ.get("RAG_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+    os.environ.get("RAG_EMBEDDING_MODEL", "embedding-passage"),
 )
 log.info(f"Embedding model set: {RAG_EMBEDDING_MODEL.value}")
 
@@ -1999,6 +2000,18 @@ RAG_OPENAI_API_KEY = PersistentConfig(
     "RAG_OPENAI_API_KEY",
     "rag.openai_api_key",
     os.getenv("RAG_OPENAI_API_KEY", OPENAI_API_KEY),
+)
+
+
+RAG_UPSTAGE_API_BASE_URL = PersistentConfig(
+    "RAG_UPSTAGE_API_BASE_URL",
+    "rag.upstage_api_base_url",
+    os.getenv("RAG_UPSTAGE_API_BASE_URL", UPSTAGE_API_BASE_URL),
+)
+RAG_UPSTAGE_API_KEY = PersistentConfig(
+    "RAG_UPSTAGE_API_KEY",
+    "rag.upstage_api_key",
+    os.getenv("RAG_UPSTAGE_API_KEY", UPSTAGE_API_KEY),
 )
 
 RAG_OLLAMA_BASE_URL = PersistentConfig(
@@ -2194,6 +2207,12 @@ PERPLEXITY_API_KEY = PersistentConfig(
     "PERPLEXITY_API_KEY",
     "rag.web.search.perplexity_api_key",
     os.getenv("PERPLEXITY_API_KEY", ""),
+)
+
+DAUM_API_KEY = PersistentConfig(
+    "DAUM_API_KEY",
+    "rag.web.search.daum_api_key",
+    os.getenv("DAUM_API_KEY", ""),
 )
 
 RAG_WEB_SEARCH_RESULT_COUNT = PersistentConfig(
