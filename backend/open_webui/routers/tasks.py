@@ -212,7 +212,7 @@ async def generate_title(
         "stream": False,
         **(
             {"max_tokens": 1000}
-            if models[task_model_id].get("owned_by") == "ollama"
+            if models[task_model_id].get("owned_by") == "ollama" or models[task_model_id].get("owned_by") == "upstage"
             else {
                 "max_completion_tokens": 1000,
             }
