@@ -60,6 +60,7 @@ from open_webui.retrieval.web.tavily import search_tavily
 from open_webui.retrieval.web.bing import search_bing
 from open_webui.retrieval.web.exa import search_exa
 from open_webui.retrieval.web.perplexity import search_perplexity
+from open_webui.retrieval.web.daum import search_daum
 
 from open_webui.retrieval.utils import (
     get_embedding_function,
@@ -207,6 +208,10 @@ async def get_embedding_config(request: Request, user=Depends(get_admin_user)):
             "url": request.app.state.config.RAG_OLLAMA_BASE_URL,
             "key": request.app.state.config.RAG_OLLAMA_API_KEY,
         },
+        "upstage_config": {
+            "url": request.app.state.config.RAG_UPSTAGE_API_BASE_URL,
+            "key": request.app.state.config.RAG_UPSTAGE_API_KEY,
+        },
     }
 
 
@@ -247,7 +252,7 @@ async def update_embedding_config(
         request.app.state.config.RAG_EMBEDDING_ENGINE = form_data.embedding_engine
         request.app.state.config.RAG_EMBEDDING_MODEL = form_data.embedding_model
 
-        if request.app.state.config.RAG_EMBEDDING_ENGINE in ["ollama", "openai"]:
+        if request.app.state.config.RAG_EMBEDDING_ENGINE in ["ollama", "openai", "upstage"]:
             if form_data.openai_config is not None:
                 request.app.state.config.RAG_OPENAI_API_BASE_URL = (
                     form_data.openai_config.url
@@ -262,6 +267,14 @@ async def update_embedding_config(
                 )
                 request.app.state.config.RAG_OLLAMA_API_KEY = (
                     form_data.ollama_config.key
+                )
+
+            if form_data.upstage_config is not None:
+                request.app.state.config.RAG_UPSTAGE_API_BASE_URL = (
+                    form_data.upstage_config.url
+                )
+                request.app.state.config.RAG_UPSTAGE_API_KEY = (
+                    form_data.upstage_config.key
                 )
 
             request.app.state.config.RAG_EMBEDDING_BATCH_SIZE = (
@@ -281,11 +294,15 @@ async def update_embedding_config(
                 request.app.state.config.RAG_OPENAI_API_BASE_URL
                 if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
                 else request.app.state.config.RAG_OLLAMA_BASE_URL
+                if request.app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                else request.app.state.config.RAG_UPSTAGE_API_BASE_URL
             ),
             (
                 request.app.state.config.RAG_OPENAI_API_KEY
                 if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
                 else request.app.state.config.RAG_OLLAMA_API_KEY
+                if request.app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                else request.app.state.config.RAG_UPSTAGE_API_KEY
             ),
             request.app.state.config.RAG_EMBEDDING_BATCH_SIZE,
         )
@@ -302,6 +319,10 @@ async def update_embedding_config(
             "ollama_config": {
                 "url": request.app.state.config.RAG_OLLAMA_BASE_URL,
                 "key": request.app.state.config.RAG_OLLAMA_API_KEY,
+            },
+            "upstage_config": {
+                "url": request.app.state.config.RAG_UPSTAGE_API_BASE_URL,
+                "key": request.app.state.config.RAG_UPSTAGE_API_KEY,
             },
         }
     except Exception as e:
@@ -415,6 +436,7 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
                 "trust_env": request.app.state.config.RAG_WEB_SEARCH_TRUST_ENV,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
                 "domain_filter_list": request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+                "daum_api_key": request.app.state.config.DAUM_API_KEY,
             },
         },
     }
@@ -641,6 +663,8 @@ async def update_rag_config(
             form_data.web.search.perplexity_api_key
         )
 
+        request.app.state.config.DAUM_API_KEY = form_data.web.search.daum_api_key
+
         request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT = (
             form_data.web.search.result_count
         )
@@ -712,6 +736,7 @@ async def update_rag_config(
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "exa_api_key": request.app.state.config.EXA_API_KEY,
                 "perplexity_api_key": request.app.state.config.PERPLEXITY_API_KEY,
+                "daum_api_key": request.app.state.config.DAUM_API_KEY,
                 "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
                 "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
                 "trust_env": request.app.state.config.RAG_WEB_SEARCH_TRUST_ENV,
@@ -892,6 +917,8 @@ def save_docs_to_vector_db(
                 return True
 
         log.info(f"adding to collection {collection_name}")
+        print("embedding_function", request.app.state.config.RAG_EMBEDDING_ENGINE)
+        print("embedding_engine", request.app.state.config.RAG_EMBEDDING_MODEL)
         embedding_function = get_embedding_function(
             request.app.state.config.RAG_EMBEDDING_ENGINE,
             request.app.state.config.RAG_EMBEDDING_MODEL,
@@ -900,11 +927,15 @@ def save_docs_to_vector_db(
                 request.app.state.config.RAG_OPENAI_API_BASE_URL
                 if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
                 else request.app.state.config.RAG_OLLAMA_BASE_URL
+                if request.app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                else request.app.state.config.RAG_UPSTAGE_API_BASE_URL
             ),
             (
                 request.app.state.config.RAG_OPENAI_API_KEY
                 if request.app.state.config.RAG_EMBEDDING_ENGINE == "openai"
                 else request.app.state.config.RAG_OLLAMA_API_KEY
+                if request.app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                else request.app.state.config.RAG_UPSTAGE_API_KEY
             ),
             request.app.state.config.RAG_EMBEDDING_BATCH_SIZE,
         )
@@ -1267,6 +1298,7 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
     - TAVILY_API_KEY
     - EXA_API_KEY
     - PERPLEXITY_API_KEY
+    - DAUM_API_KEY
     - SEARCHAPI_API_KEY + SEARCHAPI_ENGINE (by default `google`)
     - SERPAPI_API_KEY + SERPAPI_ENGINE (by default `google`)
     Args:
@@ -1437,6 +1469,13 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
             query,
             request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
             request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+        )
+    elif engine == "daum":
+        return search_daum(
+            api_key=request.app.state.config.DAUM_API_KEY,
+            query=query,
+            size=request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
+            filter_list=request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     else:
         raise Exception("No search engine API key found in environment variables")

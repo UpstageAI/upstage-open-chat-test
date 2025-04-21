@@ -27,6 +27,10 @@ from open_webui.routers.openai import (
     generate_chat_completion as generate_openai_chat_completion,
 )
 
+from open_webui.routers.upstage import (
+    generate_chat_completion as generate_upstage_chat_completion,
+)
+
 from open_webui.routers.ollama import (
     generate_chat_completion as generate_ollama_chat_completion,
 )
@@ -161,6 +165,7 @@ async def generate_chat_completion(
     user: Any,
     bypass_filter: bool = False,
 ):
+    # print(dict(request)["state"])
     log.debug(f"generate_chat_completion: {form_data}")
     if BYPASS_MODEL_ACCESS_CONTROL:
         bypass_filter = True
@@ -271,6 +276,13 @@ async def generate_chat_completion(
                 )
             else:
                 return convert_response_ollama_to_openai(response)
+        elif model.get("owned_by") == "upstage":
+            return await generate_upstage_chat_completion(
+                request=request,
+                form_data=form_data,
+                user=user,
+                bypass_filter=bypass_filter,
+            )
         else:
             return await generate_openai_chat_completion(
                 request=request,

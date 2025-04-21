@@ -359,7 +359,7 @@ def get_embedding_function(
         return lambda query, prefix=None, user=None: embedding_function.encode(
             query, **({"prompt": prefix} if prefix else {})
         ).tolist()
-    elif embedding_engine in ["ollama", "openai"]:
+    elif embedding_engine in ["ollama", "openai", "upstage"]:
         func = lambda query, prefix=None, user=None: generate_embeddings(
             engine=embedding_engine,
             model=embedding_model,
@@ -604,6 +604,48 @@ def get_model_path(model: str, update_model: bool = False):
         return model
 
 
+def generate_upstage_batch_embeddings(
+    model: str,
+    texts: list[str],
+    url: str = "https://api.upstage.ai/v1",
+    key: str = "",
+    prefix: str = None,
+    user: UserModel = None,
+) -> Optional[list[list[float]]]:
+    try:
+        json_data = {"input": texts, "model": model}
+        if isinstance(RAG_EMBEDDING_PREFIX_FIELD_NAME, str) and isinstance(prefix, str):
+            json_data[RAG_EMBEDDING_PREFIX_FIELD_NAME] = prefix
+
+        r = requests.post(
+            f"{url}/embeddings",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+                **(
+                    {
+                        "X-OpenWebUI-User-Name": user.name,
+                        "X-OpenWebUI-User-Id": user.id,
+                        "X-OpenWebUI-User-Email": user.email,
+                        "X-OpenWebUI-User-Role": user.role,
+                    }
+                    if ENABLE_FORWARD_USER_INFO_HEADERS and user
+                    else {}
+                ),
+            },
+            json=json_data,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if "data" in data:
+            return [elem["embedding"] for elem in data["data"]]
+        else:
+            raise "Something went wrong :/"
+    except Exception as e:
+        log.exception(f"Error generating openai batch embeddings: {e}")
+        return None
+
+
 def generate_openai_batch_embeddings(
     model: str,
     texts: list[str],
@@ -737,6 +779,16 @@ def generate_embeddings(
             )
         else:
             embeddings = generate_openai_batch_embeddings(
+                model, [text], url, key, prefix, user
+            )
+        return embeddings[0] if isinstance(text, str) else embeddings
+    elif engine == "upstage":
+        if isinstance(text, list):
+            embeddings = generate_upstage_batch_embeddings(
+                model, text, url, key, prefix, user
+            )
+        else:
+            embeddings = generate_upstage_batch_embeddings(
                 model, [text], url, key, prefix, user
             )
         return embeddings[0] if isinstance(text, str) else embeddings
