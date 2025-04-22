@@ -45,7 +45,11 @@ export default defineConfig({
 			'/api': {
 				target: 'https://upstage-open-chat.win',
 				changeOrigin: true,
-				//rewrite: (path) => path.replace(/^\/api/, '')
+			},
+			'/ws': {
+				target: 'https://upstage-open-chat.win',
+				ws: true,
+				changeOrigin: true
 			},
 			'/ollama': {
 				target: 'https://upstage-open-chat.win',
