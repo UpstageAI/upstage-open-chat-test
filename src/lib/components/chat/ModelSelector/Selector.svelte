@@ -494,7 +494,7 @@
 												placement="top-start"
 											>
 												<img
-													src={item.model?.info?.meta?.profile_image_url ?? (item.label?.toLowerCase().includes('solar') ? '/static/favicon.svg' : '/static/favicon.png')}
+													src={item.model?.info?.meta?.profile_image_url ?? (item.label?.toLowerCase().includes('solar') ? '/static/favicon.svg' : '/static/favicon.svg')}
 													alt="Model"
 													class="rounded-full size-5 flex items-center mr-2"
 												/>
