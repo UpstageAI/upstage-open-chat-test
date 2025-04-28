@@ -597,6 +597,70 @@ async def verify_connection(
             raise HTTPException(status_code=500, detail=error_detail)
 
 
+import base64
+import tempfile
+
+async def process_messages_with_ocr(messages, api_key):
+    try:
+        new_messages = []
+        url = "https://api.upstage.ai/v1/document-digitization"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        
+        for msg in messages:
+            if msg.get("type") == "text":
+                new_messages.append(msg)
+            elif msg.get("type") == "image_url":
+                image_data = msg.get("image_url", {}).get("url", "")
+                if image_data.startswith("data:image"):
+                    # base64 decode
+                    header, b64data = image_data.split(",", 1)
+                    image_bytes = base64.b64decode(b64data)
+
+                    # save temporarily
+                    with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
+                        temp_file.write(image_bytes)
+                        temp_file.flush()
+
+                        # send to OCR
+                        files = {"document": open(temp_file.name, "rb")}
+                        data = {"model": "ocr"}
+                        response = requests.post(url, headers=headers, files=files, data=data)
+                        ocr_result = response.json()
+                        # print(ocr_result)
+
+                        # 전체 텍스트
+                        extracted_text = ocr_result.get("text", "")
+
+                        # 단어 + 위치 정보
+                        words_info = []
+                        for page in ocr_result.get("pages", []):
+                            for word in page.get("words", []):
+                                words_info.append({
+                                    "text": word.get("text", ""),
+                                    "boundingBox": word.get("boundingBox", {}),
+                                    "confidence": word.get("confidence", 0)
+                                })
+
+                        # 이제 이 두 개를 messages에 같이 추가
+                        new_messages.append({
+                            "type": "text",
+                            "text": extracted_text,
+                            "words": words_info
+                        })
+                else:
+                    # base64가 아니면 패스하거나 에러처리
+                    new_messages.append({
+                        "type": "text",
+                        "text": "(이미지 데이터가 잘못됨)"
+                    })
+            else:
+                # 알 수 없는 타입이면 그냥 넘기기
+                new_messages.append(msg)
+
+        return new_messages
+    except Exception as e:
+        print(e)
+
 @router.post("/chat/completions")
 async def generate_chat_completion(
     request: Request,
@@ -646,7 +710,7 @@ async def generate_chat_completion(
             )
 
     await get_all_models(request, user=user)
-    print(request.app.state.UPSTAGE_MODELS)
+    # print(request.app.state.UPSTAGE_MODELS)
     model = request.app.state.UPSTAGE_MODELS.get(model_id)
     if model:
         idx = model["urlIdx"]
@@ -678,10 +742,8 @@ async def generate_chat_completion(
             "role": user.role,
         }
 
-    # url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
-    url = "https://api.upstage.ai/v1"
-    # key = request.app.state.config.UPSTAGE_API_KEYS[idx]
-    key = "up_7PDQIljc9FLgucg4F8c4EVg6jl4DB"
+    url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
+    key = request.app.state.config.UPSTAGE_API_KEYS[idx]
 
     # Fix: o1,o3 does not support the "max_tokens" parameter, Modify "max_tokens" to "max_completion_tokens"
     # is_o1_o3 = payload["model"].lower().startswith(("o1", "o3-"))
@@ -702,6 +764,15 @@ async def generate_chat_completion(
             convert_logit_bias_input_to_json(payload["logit_bias"])
         )
 
+    # Convert image_url to text using ocr
+
+    for message in payload["messages"]:
+        print(message["content"])
+        if not isinstance(message["content"], str):
+            message["content"] = await process_messages_with_ocr(message["content"], key)
+        print(message["content"])
+
+    print("payload", payload)
     payload = json.dumps(payload)
 
     r = None

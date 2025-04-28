@@ -803,7 +803,7 @@ def generate_upstage_document_parsing(
     ocr: str = "auto",
     chart_recognition: bool = True,
     coordinates: bool = True,
-    output_formats: list[str] = ["html"],
+    output_formats: list[str] = ["markdown"],
     base64_encoding: list[str] = ["figure"],
     prefix: str = None,
     user: UserModel = None,
