@@ -812,7 +812,7 @@ def generate_upstage_document_parsing(
     try:
         # json_data = {"input": texts, "model": model}
         files = {"document": open(file_path, "rb")}
-        print(files)
+        # print(files)
         data = {
             "model": model,
             "ocr": ocr,
@@ -821,7 +821,7 @@ def generate_upstage_document_parsing(
             "output_formats": json.dumps(output_formats),
             "base64_encoding": json.dumps(base64_encoding),
         }
-        print(data)
+        # print(data)
         # if isinstance(RAG_EMBEDDING_PREFIX_FIELD_NAME, str) and isinstance(prefix, str):
         #     json_data[RAG_EMBEDDING_PREFIX_FIELD_NAME] = prefix
 
@@ -846,7 +846,7 @@ def generate_upstage_document_parsing(
         )
         r.raise_for_status()
         data = r.json()
-        print(data)
+        # print(data)
         if "content" in data and "html" in data["content"]:
             return [
                 Document(
@@ -877,7 +877,7 @@ def generate_upstage_document_parsing_async(
     try:
         # json_data = {"input": texts, "model": model}
         files = {"document": open(file_path, "rb")}
-        print(files)
+        # print(files)
         data = {
             "model": model,
             "ocr": ocr,
@@ -886,7 +886,7 @@ def generate_upstage_document_parsing_async(
             "output_formats": json.dumps(output_formats),
             "base64_encoding": json.dumps(base64_encoding),
         }
-        print(data)
+        # print(data)
         # if isinstance(RAG_EMBEDDING_PREFIX_FIELD_NAME, str) and isinstance(prefix, str):
         #     json_data[RAG_EMBEDDING_PREFIX_FIELD_NAME] = prefix
 
@@ -901,7 +901,7 @@ def generate_upstage_document_parsing_async(
         )
         r.raise_for_status()
         data = r.json()
-        print(data)
+        # print(data)
         if "request_id" in data:
             return data["request_id"]
         else:

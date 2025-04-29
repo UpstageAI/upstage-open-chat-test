@@ -882,13 +882,13 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
     # Parse files if any
     ### EDIT HERE ###
-    print("EWOFJIOEWFJIOEJFOI@@@@1")
-    print(form_data)
+    # print("EWOFJIOEWFJIOEJFOI@@@@1")
+    # print(form_data)
     files = form_data.get("files", [])
     if files:
         form_data = await chat_file_parsing_handler(request, form_data, extra_params, user)
-    print("EWOFJIOEWFJIOEJFOI@@@@2")
-    print(form_data)
+    # print("EWOFJIOEWFJIOEJFOI@@@@2")
+    # print(form_data)
     user_message = get_last_user_message(form_data["messages"])
     model_knowledge = model.get("info", {}).get("meta", {}).get("knowledge", False)
 
