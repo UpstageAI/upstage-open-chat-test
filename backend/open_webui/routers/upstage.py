@@ -81,7 +81,7 @@ async def send_get_request(url, key=None, user: UserModel = None):
         log.error(f"Connection error: {e}")
         return None
 
-def get_model_list():
+def get_model_list(idx):
     
     model_list = {
         "object": "list",
@@ -93,15 +93,12 @@ def get_model_list():
                 "upstage": {"id": model_id},
                 "urlIdx": idx,
             }
-            for idx, model_id in enumerate(
-                [
-                    "solar-pro",
-                    "solar-mini",
-                ]
-            )
+            for model_id in [
+                "solar-pro",
+                "solar-mini",
+            ]
         ],
     }
-
     return model_list
 
 
@@ -296,6 +293,8 @@ async def speech(request: Request, user=Depends(get_verified_user)):
 async def get_all_models_responses(request: Request, user: UserModel) -> list:
     if not request.app.state.config.ENABLE_UPSTAGE_API:
         return []
+    
+    print(request.app.state.config.UPSTAGE_API_CONFIGS)
 
     # Check if API KEYS length is same than API URLS length
     num_urls = len(request.app.state.config.UPSTAGE_API_BASE_URLS)
@@ -310,65 +309,11 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
         else:
             request.app.state.config.UPSTAGE_API_KEYS += [""] * (num_urls - num_keys)
 
-    # request_tasks = []
-    # for idx, url in enumerate(request.app.state.config.UPSTAGE_API_BASE_URLS):
-    #     if (str(idx) not in request.app.state.config.UPSTAGE_API_CONFIGS) and (
-    #         url not in request.app.state.config.UPSTAGE_API_CONFIGS  # Legacy support
-    #     ):
-    #         request_tasks.append(
-    #             send_get_request(
-    #                 f"{url}/models",
-    #                 request.app.state.config.UPSTAGE_API_KEYS[idx],
-    #                 user=user,
-    #             )
-    #         )
-    #     else:
-    #         api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
-    #             str(idx),
-    #             request.app.state.config.UPSTAGE_API_CONFIGS.get(
-    #                 url, {}
-    #             ),  # Legacy support
-    #         )
+    request_tasks = []
+    for idx, url in enumerate(request.app.state.config.UPSTAGE_API_BASE_URLS):
+        if url == "https://api.upstage.ai/v1":
+            model_list = get_model_list(idx)
 
-    #         enable = api_config.get("enable", True)
-    #         model_ids = api_config.get("model_ids", [])
-
-    #         if enable:
-    #             if len(model_ids) == 0:
-    #                 request_tasks.append(
-    #                     send_get_request(
-    #                         f"{url}/models",
-    #                         request.app.state.config.UPSTAGE_API_KEYS[idx],
-    #                         user=user,
-    #                     )
-    #                 )
-    #             else:
-    #                 model_list = {
-    #                     "object": "list",
-    #                     "data": [
-    #                         {
-    #                             "id": model_id,
-    #                             "name": model_id,
-    #                             "owned_by": "upstage",
-    #                             "upstage": {"id": model_id},
-    #                             "urlIdx": idx,
-    #                         }
-    #                         for model_id in model_ids
-    #                     ],
-    #                 }
-
-    #                 request_tasks.append(
-    #                     asyncio.ensure_future(asyncio.sleep(0, model_list))
-    #                 )
-    #         else:
-    #             request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
-
-    # responses = await asyncio.gather(*request_tasks)
-    responses = [get_model_list()]
-
-    for idx, response in enumerate(responses):
-        if response:
-            url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
             api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
                 str(idx),
                 request.app.state.config.UPSTAGE_API_CONFIGS.get(
@@ -381,17 +326,98 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
 
             if prefix_id:
                 for model in (
-                    response if isinstance(response, list) else response.get("data", [])
+                    model_list if isinstance(model_list, list) else model_list.get("data", [])
                 ):
                     model["id"] = f"{prefix_id}.{model['id']}"
 
             if tags:
                 for model in (
-                    response if isinstance(response, list) else response.get("data", [])
+                    model_list if isinstance(model_list, list) else model_list.get("data", [])
                 ):
                     model["tags"] = tags
+            request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
 
-    log.debug(f"get_all_models:responses() {responses}")
+        elif (str(idx) not in request.app.state.config.UPSTAGE_API_CONFIGS) and (
+            url not in request.app.state.config.UPSTAGE_API_CONFIGS  # Legacy support
+        ):
+            request_tasks.append(
+                send_get_request(
+                    f"{url}/models",
+                    request.app.state.config.UPSTAGE_API_KEYS[idx],
+                    user=user,
+                )
+            )
+        else:
+            api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
+                str(idx),
+                request.app.state.config.UPSTAGE_API_CONFIGS.get(
+                    url, {}
+                ),  # Legacy support
+            )
+
+            enable = api_config.get("enable", True)
+            model_ids = api_config.get("model_ids", [])
+
+            if enable:
+                if len(model_ids) == 0:
+                    request_tasks.append(
+                        send_get_request(
+                            f"{url}/models",
+                            request.app.state.config.UPSTAGE_API_KEYS[idx],
+                            user=user,
+                        )
+                    )
+                else:
+                    model_list = {
+                        "object": "list",
+                        "data": [
+                            {
+                                "id": model_id,
+                                "name": model_id,
+                                "owned_by": "upstage",
+                                "upstage": {"id": model_id},
+                                "urlIdx": idx,
+                            }
+                            for model_id in model_ids
+                        ],
+                    }
+
+                    request_tasks.append(
+                        asyncio.ensure_future(asyncio.sleep(0, model_list))
+                    )
+            else:
+                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
+
+    responses = await asyncio.gather(*request_tasks)
+    # responses = [get_model_list1(), get_model_list2()]
+
+    # for idx, response in enumerate(responses):
+    #     if response:
+    #         url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
+    #         api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
+    #             str(idx),
+    #             request.app.state.config.UPSTAGE_API_CONFIGS.get(
+    #                 url, {}
+    #             ),  # Legacy support
+    #         )
+
+    #         prefix_id = api_config.get("prefix_id", None)
+    #         tags = api_config.get("tags", [])
+
+    #         if prefix_id:
+    #             for model in (
+    #                 response if isinstance(response, list) else response.get("data", [])
+    #             ):
+    #                 model["id"] = f"{prefix_id}.{model['id']}"
+
+    #         if tags:
+    #             for model in (
+    #                 response if isinstance(response, list) else response.get("data", [])
+    #             ):
+    #                 model["tags"] = tags
+
+    # log.debug(f"get_all_models:responses() {responses}")
+    print(responses)
     return responses
 
 
@@ -531,7 +557,8 @@ async def get_models(
     #             error_detail = f"Unexpected error: {str(e)}"
     #             raise HTTPException(status_code=500, detail=error_detail)
     
-    models = get_model_list()
+    # models = get_model_list()
+    models = await get_all_models(request, user)
 
     if user.role == "user" and not BYPASS_MODEL_ACCESS_CONTROL:
         models["data"] = await get_filtered_models(models, user)
