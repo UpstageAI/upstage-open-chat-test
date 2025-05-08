@@ -600,66 +600,81 @@ async def verify_connection(
 import base64
 import tempfile
 
-async def process_messages_with_ocr(messages, api_key):
+async def process_message_with_ocr(msg, api_key, message_content=None):
     try:
-        new_messages = []
         url = "https://api.upstage.ai/v1/document-digitization"
         headers = {"Authorization": f"Bearer {api_key}"}
         
-        for msg in messages:
-            if msg.get("type") == "text":
-                new_messages.append(msg)
-            elif msg.get("type") == "image_url":
-                image_data = msg.get("image_url", {}).get("url", "")
-                if image_data.startswith("data:image"):
-                    # base64 decode
-                    header, b64data = image_data.split(",", 1)
-                    image_bytes = base64.b64decode(b64data)
+        image_data = msg.get("image_url", {}).get("url", "")
+        if image_data.startswith("data:image"):
+            # base64 decode
+            header, b64data = image_data.split(",", 1)
+            image_bytes = base64.b64decode(b64data)
 
-                    # save temporarily
-                    with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
-                        temp_file.write(image_bytes)
-                        temp_file.flush()
+            # save temporarily
+            with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
+                temp_file.write(image_bytes)
+                temp_file.flush()
 
-                        # send to OCR
-                        files = {"document": open(temp_file.name, "rb")}
-                        data = {"model": "ocr"}
-                        response = requests.post(url, headers=headers, files=files, data=data)
-                        ocr_result = response.json()
-                        # print(ocr_result)
+                # send to OCR
+                files = {"document": open(temp_file.name, "rb")}
+                data = {"model": "ocr"}
+                response = requests.post(url, headers=headers, files=files, data=data)
+                ocr_result = response.json()
 
-                        # 전체 텍스트
-                        extracted_text = ocr_result.get("text", "")
-
-                        # 단어 + 위치 정보
-                        words_info = []
-                        for page in ocr_result.get("pages", []):
-                            for word in page.get("words", []):
-                                words_info.append({
-                                    "text": word.get("text", ""),
-                                    "boundingBox": word.get("boundingBox", {}),
-                                    "confidence": word.get("confidence", 0)
-                                })
-
-                        # 이제 이 두 개를 messages에 같이 추가
-                        new_messages.append({
-                            "type": "text",
-                            "text": extracted_text,
-                            "words": words_info
-                        })
+                # 전체 confidence 체크
+                confidence = ocr_result.get("confidence", 0)
+                # log.info(f"ocr_result: {ocr_result}")
+                if confidence < 0.9:
+                    # 현재 메시지의 content에서 언어 감지
+                    is_korean = False
+                    if message_content:
+                        for content in message_content:
+                            if isinstance(content.get("text"), str):
+                                # 한글 문자가 포함되어 있는지 확인
+                                if any('\uAC00' <= char <= '\uD7A3' for char in content.get("text", "")):
+                                    is_korean = True
+                                    break
+                    
+                    error_message = "I'm sorry, but as a text-based AI model, I'm unable to view or analyze images directly. If you need help with the image, please describe its contents in text or ask specific questions about it, and I'll do my best to assist you."
+                    if is_korean:
+                        error_message = "죄송합니다만, 현재 저는 텍스트 기반 AI 모델이라 이미지를 직접 확인하거나 분석할 수 없습니다. 이미지에 대해 도움이 필요하시다면, 이미지의 내용을 텍스트로 설명해 주시거나 구체적인 질문을 해주시면 최대한 도움을 드리겠습니다."
+                    
+                    return {
+                        "type": "image_ocr_error",
+                        "text": error_message,
+                        "confidence": confidence
+                    }
                 else:
-                    # base64가 아니면 패스하거나 에러처리
-                    new_messages.append({
-                        "type": "text",
-                        "text": "(이미지 데이터가 잘못됨)"
-                    })
-            else:
-                # 알 수 없는 타입이면 그냥 넘기기
-                new_messages.append(msg)
+                    # 전체 텍스트
+                    extracted_text = ocr_result.get("text", "")
 
-        return new_messages
+                    # 단어 + 위치 정보
+                    words_info = []
+                    for page in ocr_result.get("pages", []):
+                        for word in page.get("words", []):
+                            words_info.append({
+                                "text": word.get("text", ""),
+                                "boundingBox": word.get("boundingBox", {}),
+                                "confidence": word.get("confidence", 0)
+                            })
+
+                    return {
+                        "type": "text",
+                        "text": extracted_text,
+                        "words": words_info,
+                        "confidence": confidence
+                    }
+        else:
+            # base64가 아니면 패스하거나 에러처리
+            return {
+                "type": "text",
+                "text": "(Invalid image data)",
+                "confidence": 0
+            }
     except Exception as e:
-        print(e)
+        # log.exception(e)
+        raise e
 
 @router.post("/chat/completions")
 async def generate_chat_completion(
@@ -765,14 +780,34 @@ async def generate_chat_completion(
         )
 
     # Convert image_url to text using ocr
+    try:
+        for message in payload["messages"]:
+            if not isinstance(message["content"], str):
+                for msg_part in message["content"]:
+                    if msg_part.get("type") == "image_ocr_error":
+                        error_message = msg_part.get("text", "Image processing failed.")
+                        if form_data.get("stream", False):
+                            async def error_stream():
+                                yield f"data: {json.dumps({'choices': [{'delta': {'content': error_message}}]})}\n\n"
+                                yield "data: [DONE]\n\n"
+                            return StreamingResponse(error_stream(), media_type="text/event-stream")
+                        else:
+                            return {"choices": [{"message": {"content": error_message}}]}
+            # image_url이 text로 변환된 경우는 그대로 content에 포함
 
-    for message in payload["messages"]:
-        print(message["content"])
-        if not isinstance(message["content"], str):
-            message["content"] = await process_messages_with_ocr(message["content"], key)
-        print(message["content"])
+    except Exception as e:
+        # OCR 처리 루프 또는 그 외 로직에서 발생한 예외 처리
+        log.exception(f"Error during message processing in generate_chat_completion: {e}")
+        generic_error_message = "An error occurred while processing your request."
+        if form_data.get("stream", False):
+            async def error_stream():
+                yield f"data: {json.dumps({'choices': [{'delta': {'content': generic_error_message}}]})}\\n\\n"
+                yield "data: [DONE]\\n\\n"
+            return StreamingResponse(error_stream(), media_type="text/event-stream")
+        else:
+            return {"choices": [{"message": {"content": generic_error_message}}]}
 
-    print("payload", payload)
+    # print("payload", payload)
     payload = json.dumps(payload)
 
     r = None

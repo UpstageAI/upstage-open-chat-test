@@ -345,6 +345,29 @@
 					} else {
 						toast.info(toastContent);
 					}
+				} else if (type === 'ocr_result') {
+					console.log('Current History State:', history);
+					console.log('Current Message:', message);
+					console.log('OCR Result Data:', data);
+
+					let prev_message = history.messages[data.message_id]
+					
+					if (prev_message?.files) {
+						console.log('Before Update - Files:', prev_message.files);
+						prev_message.files = prev_message.files.map(file => {
+							if (file.type === 'image') {
+								return {
+									...file,
+									text: data.text,
+									confidence: data.confidence
+								};
+							}
+							return file;
+						});
+						console.log('After Update - Files:', prev_message.files);
+
+						history.messages[data.message_id] = prev_message;
+					}
 				} else {
 					console.log('Unknown message type', data);
 				}
@@ -1539,7 +1562,9 @@
 									.map((file) => ({
 										type: 'image_url',
 										image_url: {
-											url: file.url
+											url: file.url,
+											text: file.text || '',
+											confidence: file.confidence || null
 										}
 									}))
 							]

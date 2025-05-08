@@ -22,6 +22,7 @@ from fastapi import Request, HTTPException
 from starlette.responses import Response, StreamingResponse
 
 
+from open_webui.routers.upstage import process_message_with_ocr
 from open_webui.models.chats import Chats
 from open_webui.models.users import Users
 from open_webui.socket.main import (
@@ -880,10 +881,151 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     events = []
     sources = []
 
+    # Only for upstage models
+    if model.get("owned_by") == "upstage":
+        try:
+            messages_table = Chats.get_messages_by_chat_id(metadata["chat_id"])
+            log.info(f"length of messages_table: {len(messages_table)}")
+            log.info(f"messages_table: {messages_table}")
+            log.info(f"length of form_data['messages']: {len(form_data['messages'])}")
+            log.info(f"form_data['messages']: {form_data['messages']}")
+            
+            # parent node부터 순서대로 처리하기 위해 정렬
+            sorted_messages = []
+            current_id = None
+            
+            # currentId 찾기
+            for msg in messages_table.values():
+                if msg.get('parentId') is None:
+                    current_id = msg['id']
+                    break
+            
+            # parent node부터 순서대로 메시지 정렬
+            while current_id is not None:
+                msg = messages_table[current_id]
+                sorted_messages.append(msg)
+                if msg.get('childrenIds'):
+                    current_id = msg['childrenIds'][0]  # 첫 번째 자식 노드로 이동
+                else:
+                    current_id = None
+            
+            # form_data의 messages 길이만큼만 사용
+            sorted_messages = sorted_messages[:len(form_data["messages"])]
+            
+            for message, message_table in zip(form_data["messages"], sorted_messages):
+                if not isinstance(message["content"], str):
+                    processed_content = []
+                    images = []
+                    for msg in message["content"]:
+                        if msg.get("type") == "image_url":
+                            try:
+                                # OCR 결과가 이미 포함되어 있는지 확인
+                                if msg.get("image_url", {}).get("text", "") and msg.get("image_url", {}).get("confidence", 0):
+                                    processed_message = {
+                                        "type": "text",
+                                        "text": msg.get("image_url", {}).get("text", ""),
+                                        "confidence": msg.get("image_url", {}).get("confidence", 0)
+                                    }
+                                    # OCR 성공
+                                    log.info(f"ocr_result (pre-processed): {processed_message}")
+
+                                else:
+                                    idx = 0
+                                    key = request.app.state.config.UPSTAGE_API_KEYS[idx]
+                                    await event_emitter({
+                                            "type": "status",
+                                            "data": {
+                                                "action": "image_ocr",
+                                                "description": "Waiting for image ocr results",
+                                                "done": False,
+                                            }
+                                        })
+                                    processed_message = await process_message_with_ocr(msg, key, message["content"])
+                                    if processed_message.get("type") == "image_ocr_error":
+                                        # OCR 실패 emit
+                                        if event_emitter:
+                                            await event_emitter({
+                                                "type": "ocr_result",
+                                                "data": {
+                                                    "text": "No OCR result",
+                                                    "confidence": 0.01,
+                                                    "error": processed_message.get("text"),
+                                                    "message_id": message_table.get("id", None)
+                                                }
+                                            })
+                                        images.append({
+                                            "type": "image",
+                                            "url": msg.get("image_url", {}).get("url", ""),
+                                            "text": "No OCR result",
+                                            "confidence": 0.01,
+                                        })
+                                    else:
+                                        # OCR 성공 emit
+                                        if event_emitter:
+                                            log.info(f"ocr_result: {processed_message}")
+                                            await event_emitter({
+                                                "type": "ocr_result",
+                                                "data": {
+                                                    "text": processed_message.get("text"),
+                                                    "confidence": processed_message.get("confidence", 0.01),
+                                                    "message_id": message_table.get("id", None)
+                                                }
+                                            })
+                                        images.append({
+                                            "type": "image",
+                                            "url": msg.get("image_url", {}).get("url", ""),
+                                            "text": processed_message.get("text", "No OCR result"),
+                                            "confidence": processed_message.get("confidence", 0.01),
+                                        })
+                                    await event_emitter({
+                                            "type": "status",
+                                            "data": {
+                                                "action": "image_ocr",
+                                                "description": "Image ocr results",
+                                                "done": True,
+                                            }
+                                        })
+                                
+                                    
+                                processed_content.append(processed_message)
+                                
+                                
+                            except Exception as e:
+                                # OCR 실패 emit
+                                if event_emitter:
+                                    await event_emitter({
+                                        "type": "ocr_result",
+                                        "data": {
+                                            "text": "No OCR result",
+                                            "confidence": 0.01,
+                                            "error": str(e),
+                                            "message_id": message.get("id", None)
+                                        }
+                                    })
+                                processed_content.append({
+                                    "type": "image_ocr_error",
+                                    "text": str(e)
+                                })
+                        else:
+                            processed_content.append(msg)
+                    message["content"] = processed_content
+
+                    log.info(f"message: {message}")
+                    log.info(f"message_table: {message_table}")
+                    log.info(f"images: {images}")
+                    Chats.upsert_message_to_chat_by_id_and_message_id(
+                        metadata["chat_id"],
+                        message_table["id"],
+                        {
+                            "files": images,
+                        },
+                    )
+
+        except Exception as e:
+            log.info(e)
+            # 여기서는 전체 에러를 emit하거나, 필요시만 처리
+
     # Parse files if any
-    ### EDIT HERE ###
-    # print("EWOFJIOEWFJIOEJFOI@@@@1")
-    # print(form_data)
     files = form_data.get("files", [])
     if files:
         form_data = await chat_file_parsing_handler(request, form_data, extra_params, user)
@@ -1945,7 +2087,7 @@ async def process_chat_response(
 
                                         if ENABLE_REALTIME_CHAT_SAVE:
                                             # Save message in the database
-                                            Chats.upsert_message_to_chat_by_id_and_message_id(
+                                            result = Chats.upsert_message_to_chat_by_id_and_message_id(
                                                 metadata["chat_id"],
                                                 metadata["message_id"],
                                                 {
@@ -1954,6 +2096,9 @@ async def process_chat_response(
                                                     ),
                                                 },
                                             )
+                                            if not result:
+                                                log.error(f"Failed to save message to chat {metadata['chat_id']}")
+                                                raise Exception("Failed to save message to database")
                                         else:
                                             data = {
                                                 "content": serialize_content_blocks(

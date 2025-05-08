@@ -332,6 +332,7 @@ def get_event_emitter(request_info, update_db=True):
             )
 
         if update_db:
+            # log.info(f"event_data: {event_data}")
             if "type" in event_data and event_data["type"] == "status":
                 Chats.add_message_status_to_chat_by_id_and_message_id(
                     request_info["chat_id"],
@@ -355,6 +356,29 @@ def get_event_emitter(request_info, update_db=True):
                         "content": content,
                     },
                 )
+            
+            if "type" in event_data and event_data["type"] == "ocr_result":
+                image_ocr = event_data.get("data", {})
+                
+                Chats.upsert_message_to_chat_by_id_and_message_id(
+                    request_info["chat_id"],
+                    request_info["message_id"],
+                    {
+                        "image_ocr": image_ocr,
+                    },
+                )
+            
+            if "type" in event_data and event_data["type"] == "image_ocr_error":
+                image_ocr = event_data.get("data", {})
+                
+                Chats.upsert_message_to_chat_by_id_and_message_id(
+                    request_info["chat_id"],
+                    request_info["message_id"],
+                    {
+                        "image_ocr": image_ocr,
+                    },
+                )
+
 
             if "type" in event_data and event_data["type"] == "replace":
                 content = event_data.get("data", {}).get("content", "")
