@@ -253,6 +253,7 @@ from open_webui.config import (
     WEBUI_AUTH,
     WEBUI_NAME,
     WEBUI_BANNERS,
+    OAUTH_ALLOWED_DOMAINS,
     WEBHOOK_URL,
     ADMIN_EMAIL,
     SHOW_ADMIN_DETAILS,
@@ -552,6 +553,8 @@ app.state.config.WEBHOOK_URL = WEBHOOK_URL
 app.state.config.BANNERS = WEBUI_BANNERS
 app.state.config.MODEL_ORDER_LIST = MODEL_ORDER_LIST
 
+# domain whitelist
+app.state.config.OAUTH_ALLOWED_DOMAINS = OAUTH_ALLOWED_DOMAINS
 
 app.state.config.ENABLE_CHANNELS = ENABLE_CHANNELS
 app.state.config.ENABLE_COMMUNITY_SHARING = ENABLE_COMMUNITY_SHARING
@@ -1267,6 +1270,7 @@ async def get_app_config(request: Request):
         "features": {
             "auth": WEBUI_AUTH,
             "auth_trusted_header": bool(app.state.AUTH_TRUSTED_EMAIL_HEADER),
+            "OAUTH_ALLOWED_DOMAINS": app.state.config.OAUTH_ALLOWED_DOMAINS,
             "enable_ldap": app.state.config.ENABLE_LDAP,
             "enable_api_key": app.state.config.ENABLE_API_KEY,
             "enable_signup": app.state.config.ENABLE_SIGNUP,

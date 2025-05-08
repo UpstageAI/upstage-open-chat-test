@@ -654,6 +654,7 @@ async def get_admin_config(request: Request, user=Depends(get_admin_user)):
         "ENABLE_MESSAGE_RATING": request.app.state.config.ENABLE_MESSAGE_RATING,
         "ENABLE_CHANNELS": request.app.state.config.ENABLE_CHANNELS,
         "ENABLE_USER_WEBHOOKS": request.app.state.config.ENABLE_USER_WEBHOOKS,
+        "OAUTH_ALLOWED_DOMAINS": request.app.state.config.OAUTH_ALLOWED_DOMAINS,
     }
 
 
@@ -670,6 +671,7 @@ class AdminConfig(BaseModel):
     ENABLE_MESSAGE_RATING: bool
     ENABLE_CHANNELS: bool
     ENABLE_USER_WEBHOOKS: bool
+    OAUTH_ALLOWED_DOMAINS: list[str]
 
 
 @router.post("/admin/config")
@@ -706,6 +708,8 @@ async def update_admin_config(
 
     request.app.state.config.ENABLE_USER_WEBHOOKS = form_data.ENABLE_USER_WEBHOOKS
 
+    request.app.state.config.OAUTH_ALLOWED_DOMAINS = form_data.OAUTH_ALLOWED_DOMAINS
+
     return {
         "SHOW_ADMIN_DETAILS": request.app.state.config.SHOW_ADMIN_DETAILS,
         "WEBUI_URL": request.app.state.config.WEBUI_URL,
@@ -719,6 +723,7 @@ async def update_admin_config(
         "ENABLE_COMMUNITY_SHARING": request.app.state.config.ENABLE_COMMUNITY_SHARING,
         "ENABLE_MESSAGE_RATING": request.app.state.config.ENABLE_MESSAGE_RATING,
         "ENABLE_USER_WEBHOOKS": request.app.state.config.ENABLE_USER_WEBHOOKS,
+        "OAUTH_ALLOWED_DOMAINS": request.app.state.config.OAUTH_ALLOWED_DOMAINS,
     }
 
 
