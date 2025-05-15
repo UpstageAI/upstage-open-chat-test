@@ -104,6 +104,8 @@ from open_webui.config import (
     OPENAI_API_BASE_URLS,
     OPENAI_API_KEYS,
     OPENAI_API_CONFIGS,
+    # Arcade
+    ARCADE_API_KEY,
     # Upstage
     ENABLE_UPSTAGE_API,
     UPSTAGE_API_KEYS,
@@ -492,6 +494,13 @@ app.state.config.OPENAI_API_CONFIGS = OPENAI_API_CONFIGS
 
 app.state.OPENAI_MODELS = {}
 
+########################################
+#
+# ARCADE
+#
+########################################
+
+app.state.config.ARCADE_API_KEY = ARCADE_API_KEY
 
 ########################################
 #
