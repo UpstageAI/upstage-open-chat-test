@@ -501,6 +501,10 @@ app.state.OPENAI_MODELS = {}
 ########################################
 
 app.state.config.ARCADE_API_KEY = ARCADE_API_KEY
+from arcadepy import Arcade
+
+client = Arcade(api_key=app.state.config.ARCADE_API_KEY)
+app.state.ARCADE_TOOLS = [tool for tool in client.tools.list() if tool.qualified_name.startswith("Google")]
 
 ########################################
 #

@@ -365,7 +365,7 @@ async def chat_completion_arcade_tools_handler(
     skip_files = False
     sources = []
 
-    tools = [tool for tool in client.tools.list() if tool.qualified_name.startswith("Google")]
+    tools = request.app.state.ARCADE_TOOLS
 
     specs = [
         {
@@ -385,7 +385,7 @@ async def chat_completion_arcade_tools_handler(
         }
         for tool in tools
     ]
-    tools_specs = json.dumps(specs)
+    
 
     def arcade_tool_callable(tool_name, user_id, event_emitter):
         async def _callable(**input_data):
@@ -438,6 +438,19 @@ async def chat_completion_arcade_tools_handler(
         
         return _callable
 
+    async def list_tools_callable(**input_data):
+        tools_list = [
+            {
+                "name": tool.qualified_name,
+                "description": tool.description
+            }
+            for tool in request.app.state.ARCADE_TOOLS
+        ]
+        return {
+            "result": tools_list,
+            "status": "completed",
+            "description": "List of all tools",
+        }
 
     tools = {
         spec['name'] : {
@@ -445,6 +458,26 @@ async def chat_completion_arcade_tools_handler(
             "callable": arcade_tool_callable(spec['name'], user.id, event_emitter)
         }
         for spec in specs
+    }
+
+    # Add list_tools to the specs
+    list_tools_spec = {
+        'description': "List of all tools",
+        'name': "list_tools",
+        'parameters': {
+            'properties':{},
+            'required': [],
+            'type': 'object'
+        },
+        'type': 'function'
+    }
+    specs.append(list_tools_spec)
+
+    tools_specs = json.dumps(specs)
+
+    tools["list_tools"] = {
+        'spec': list_tools_spec,
+        'callable': list_tools_callable
     }
 
     if request.app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE != "":
