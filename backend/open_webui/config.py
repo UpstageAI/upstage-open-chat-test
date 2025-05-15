@@ -888,7 +888,11 @@ UPSTAGE_API_BASE_URL = "https://api.upstage.ai/v1"
 # ARCADE_API_KEY
 ####################################
 
-ARCADE_API_KEY = os.environ.get("ARCADE_API_KEY", "")
+ARCADE_API_KEY = PersistentConfig(
+    "ARCADE_API_KEY",
+    "arcade.api_key",
+    os.environ.get("ARCADE_API_KEY", ""),
+)
 
 
 
