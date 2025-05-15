@@ -18,6 +18,7 @@
 	import { compareVersion } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import Plus from '$lib/components/icons/Plus.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -31,6 +32,37 @@
 
 	let adminConfig = null;
 	let webhookUrl = '';
+	let newDomain = '';
+
+	const handleAddDomain = () => {
+		if (!newDomain) {
+			return false;
+		}
+		
+		if (!isValidDomain(newDomain)) {
+			toast.error($i18n.t('Invalid domain format'));
+			return false;
+		}
+
+		if (adminConfig.OAUTH_ALLOWED_DOMAINS.includes(newDomain)) {
+			toast.error($i18n.t('Domain already exists'));
+			return false;
+		}
+
+		adminConfig.OAUTH_ALLOWED_DOMAINS = [
+			...adminConfig.OAUTH_ALLOWED_DOMAINS,
+			newDomain
+		];
+		newDomain = '';
+		toast.success($i18n.t('Domain added successfully'));
+		return true;
+	};
+
+	const isValidDomain = (domain: string) => {
+		// 도메인 유효성 검사를 위한 정규식
+		const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+		return domainRegex.test(domain);
+	};
 
 	// LDAP
 	let ENABLE_LDAP = false;
@@ -581,6 +613,69 @@
 						</div>
 					</div>
 				</div>
+
+				<div class="mb-3">
+					<div class=" mb-2.5 text-base font-medium">{$i18n.t('Allowed Email Domains')}</div>
+
+					<hr class=" border-gray-100 dark:border-gray-850 my-2" />
+
+					<div class="mb-1 flex w-full items-center justify-between pr-2">
+						<div class=" self-center text-xs font-medium">
+							{$i18n.t('Enable Allowed Email Domains')}
+						</div>
+
+						<Switch bind:state={adminConfig.ENABLE_ALLOWED_EMAIL_DOMAINS} />
+					</div>
+					{#if adminConfig?.ENABLE_ALLOWED_EMAIL_DOMAINS }
+						<div class="mb-2.5 flex w-full items-center justify-between pr-2">
+							<input
+								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+								type="text"
+								placeholder={$i18n.t('Add allowed domain')}
+								bind:value={newDomain}
+								on:keydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										handleAddDomain();
+									}
+								}}
+							/>
+							<button
+								class="px-1"
+								type="button"
+								on:click={handleAddDomain}
+							>
+								<Plus />
+							</button>
+						</div>
+						<div class="mb-1 text-xs font-medium">
+							Registered Domains :
+						</div>
+
+						<ul class="list-disc pl-8 ">
+							{#each adminConfig.OAUTH_ALLOWED_DOMAINS as domain}
+								<li>
+									<div class="flex items-center justify-between">
+									<span class="text-sm">{domain}</span>
+									<button
+										type="button"
+										class="ml-2 p-1 text-gray-500 hover:text-red-500 transition-colors"
+										on:click={() => {
+											adminConfig.OAUTH_ALLOWED_DOMAINS = adminConfig.OAUTH_ALLOWED_DOMAINS.filter(d => d !== domain);
+											toast.success($i18n.t('Domain removed successfully'));
+										}}
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+										</svg>
+									</button>
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+
 
 				<div class="mb-3">
 					<div class=" mb-2.5 text-base font-medium">{$i18n.t('Features')}</div>
