@@ -58,6 +58,7 @@
 			action: string;
 			description: string;
 			urls?: string[];
+			auth_url?: string;
 			query?: string;
 		}[];
 		status?: {
@@ -65,6 +66,7 @@
 			action: string;
 			description: string;
 			urls?: string[];
+			auth_url?: string;
 			query?: string;
 		};
 		done: boolean;
@@ -692,6 +694,11 @@
 													{$i18n.t('Generating search query')}
 												{:else}
 													{status?.description}
+												{/if}
+												{#if status?.auth_url}
+													<a href={status?.auth_url} target="_blank">
+														{$i18n.t('Click here to authenticate')}
+													</a>
 												{/if}
 											</div>
 										</div>
