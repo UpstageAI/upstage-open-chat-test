@@ -655,6 +655,7 @@ async def get_admin_config(request: Request, user=Depends(get_admin_user)):
         "ENABLE_CHANNELS": request.app.state.config.ENABLE_CHANNELS,
         "ENABLE_USER_WEBHOOKS": request.app.state.config.ENABLE_USER_WEBHOOKS,
         "OAUTH_ALLOWED_DOMAINS": request.app.state.config.OAUTH_ALLOWED_DOMAINS,
+        "ENABLE_ALLOWED_EMAIL_DOMAINS": request.app.state.config.ENABLE_ALLOWED_EMAIL_DOMAINS,
     }
 
 
@@ -672,6 +673,7 @@ class AdminConfig(BaseModel):
     ENABLE_CHANNELS: bool
     ENABLE_USER_WEBHOOKS: bool
     OAUTH_ALLOWED_DOMAINS: list[str]
+    ENABLE_ALLOWED_EMAIL_DOMAINS: bool
 
 
 @router.post("/admin/config")
@@ -710,6 +712,10 @@ async def update_admin_config(
 
     request.app.state.config.OAUTH_ALLOWED_DOMAINS = form_data.OAUTH_ALLOWED_DOMAINS
 
+    request.app.state.config.ENABLE_ALLOWED_EMAIL_DOMAINS = (
+        form_data.ENABLE_ALLOWED_EMAIL_DOMAINS
+    )
+
     return {
         "SHOW_ADMIN_DETAILS": request.app.state.config.SHOW_ADMIN_DETAILS,
         "WEBUI_URL": request.app.state.config.WEBUI_URL,
@@ -724,6 +730,7 @@ async def update_admin_config(
         "ENABLE_MESSAGE_RATING": request.app.state.config.ENABLE_MESSAGE_RATING,
         "ENABLE_USER_WEBHOOKS": request.app.state.config.ENABLE_USER_WEBHOOKS,
         "OAUTH_ALLOWED_DOMAINS": request.app.state.config.OAUTH_ALLOWED_DOMAINS,
+        "ENABLE_ALLOWED_EMAIL_DOMAINS": request.app.state.config.ENABLE_ALLOWED_EMAIL_DOMAINS,
     }
 
 

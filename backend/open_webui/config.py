@@ -529,6 +529,13 @@ OAUTH_ALLOWED_DOMAINS = PersistentConfig(
     ],
 )
 
+ENABLE_ALLOWED_EMAIL_DOMAINS = PersistentConfig(
+    "ENABLE_ALLOWED_EMAIL_DOMAINS",
+    "oauth.enable_allowed_email_domains",
+    os.environ.get("ENABLE_ALLOWED_EMAIL_DOMAINS", "False").lower() == "true",
+)
+
+
 
 def load_oauth_providers():
     OAUTH_PROVIDERS.clear()

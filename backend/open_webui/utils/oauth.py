@@ -31,6 +31,7 @@ from open_webui.config import (
     OAUTH_ALLOWED_ROLES,
     OAUTH_ADMIN_ROLES,
     OAUTH_ALLOWED_DOMAINS,
+    ENABLE_ALLOWED_EMAIL_DOMAINS,
     WEBHOOK_URL,
     JWT_EXPIRES_IN,
     AppConfig,
@@ -65,6 +66,7 @@ auth_manager_config.OAUTH_USERNAME_CLAIM = OAUTH_USERNAME_CLAIM
 auth_manager_config.OAUTH_ALLOWED_ROLES = OAUTH_ALLOWED_ROLES
 auth_manager_config.OAUTH_ADMIN_ROLES = OAUTH_ADMIN_ROLES
 auth_manager_config.OAUTH_ALLOWED_DOMAINS = OAUTH_ALLOWED_DOMAINS
+auth_manager_config.ENABLE_ALLOWED_EMAIL_DOMAINS = ENABLE_ALLOWED_EMAIL_DOMAINS
 auth_manager_config.WEBHOOK_URL = WEBHOOK_URL
 auth_manager_config.JWT_EXPIRES_IN = JWT_EXPIRES_IN
 
@@ -290,7 +292,8 @@ class OAuthManager:
                 raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
         email = email.lower()
         if (
-            "*" not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
+            auth_manager_config.ENABLE_ALLOWED_EMAIL_DOMAINS
+            and "*" not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
             and email.split("@")[-1] not in auth_manager_config.OAUTH_ALLOWED_DOMAINS
         ):
             log.warning(
