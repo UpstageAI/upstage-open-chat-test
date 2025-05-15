@@ -878,6 +878,14 @@ UPSTAGE_API_BASE_URL = "https://api.upstage.ai/v1"
 
 
 ####################################
+# ARCADE_API_KEY
+####################################
+
+ARCADE_API_KEY = os.environ.get("ARCADE_API_KEY", "")
+
+
+
+####################################
 # OPENAI_API
 ####################################
 
@@ -1882,8 +1890,8 @@ PDF_EXTRACT_IMAGES = PersistentConfig(
 RAG_EMBEDDING_MODEL = PersistentConfig(
     "RAG_EMBEDDING_MODEL",
     "rag.embedding_model",
-    # os.environ.get("RAG_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
-    os.environ.get("RAG_EMBEDDING_MODEL", "embedding-passage"),
+    os.environ.get("RAG_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+    # os.environ.get("RAG_EMBEDDING_MODEL", "embedding-passage"),
 )
 log.info(f"Embedding model set: {RAG_EMBEDDING_MODEL.value}")
 
