@@ -409,11 +409,21 @@ async def chat_completion_arcade_tools_handler(
                 return {
                     "result": None,
                     "status": "pending",
-                    "auth_url": auth_response.url,
-                    "description": f"Need to authorize tool {tool_name} from user using url {auth_response.url}",
+                    # "auth_url": auth_response.url,
+                    "description": f"Need to get authorization from user with authentication url."
+                                    "Inform user to click on auth button which would be provided near your response",
                 }
             
             log.debug(f"{user_id=}")
+
+            await event_emitter(
+                {
+                    "type": "status",
+                    "data": {"action": "arcade_tool", "description": f"Executing tool {tool_name}", "done": False},
+                }
+            )
+
+            start_time = time.time()
 
             response = client.tools.execute(
                 tool_name=tool_name,
@@ -426,7 +436,7 @@ async def chat_completion_arcade_tools_handler(
                     "type": "status",
                     "data": {
                         "action": "arcade_tool",
-                        "description": f"Tool {tool_name} executed with status {response.status}",
+                        "description": f"Tool {tool_name} executed with status {response.status} for {int(time.time() - start_time)} seconds",
                         "done": True,
                     },
                 }
@@ -495,6 +505,12 @@ async def chat_completion_arcade_tools_handler(
     # print("tools_function_calling_prompt", tools_function_calling_prompt)
 
     try:
+        await event_emitter(
+            {
+                "type": "status",
+                "data": {"action": "arcade_tool", "description": "Selecting right tool", "done": False},
+            }
+        )
         response = await generate_chat_completion(request, form_data=payload, user=user)
         log.debug(f"{response=}")
         content = await get_content_from_response(response)
@@ -666,6 +682,8 @@ async def chat_web_search_handler(
 
     queries = []
     try:
+        start_time = time.time()
+
         res = await generate_queries(
             request,
             {
@@ -805,7 +823,7 @@ async def chat_web_search_handler(
                 "type": "status",
                 "data": {
                     "action": "web_search",
-                    "description": "Searched {{count}} sites",
+                    "description": f"Searched {{{{count}}}} sites for {int(time.time() - start_time)} seconds",
                     "urls": urls,
                     "done": True,
                 },
