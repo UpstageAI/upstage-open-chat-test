@@ -894,7 +894,14 @@ ARCADE_API_KEY = PersistentConfig(
     os.environ.get("ARCADE_API_KEY", ""),
 )
 
-
+ARCADE_PATTERNS = PersistentConfig(
+    "ARCADE_PATTERNS",
+    "arcade.patterns",
+    [
+        pattern.strip()
+        for pattern in os.environ.get("ARCADE_PATTERNS", "*").split(",")
+    ],
+)
 
 ####################################
 # OPENAI_API

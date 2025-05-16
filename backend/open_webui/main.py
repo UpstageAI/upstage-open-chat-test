@@ -106,6 +106,7 @@ from open_webui.config import (
     OPENAI_API_CONFIGS,
     # Arcade
     ARCADE_API_KEY,
+    ARCADE_PATTERNS,
     # Upstage
     ENABLE_UPSTAGE_API,
     UPSTAGE_API_KEYS,
@@ -501,11 +502,18 @@ app.state.OPENAI_MODELS = {}
 ########################################
 
 app.state.config.ARCADE_API_KEY = ARCADE_API_KEY
+app.state.config.ARCADE_PATTERNS = ARCADE_PATTERNS
 from arcadepy import Arcade
-
+import re
 client = Arcade(api_key=app.state.config.ARCADE_API_KEY)
-app.state.ARCADE_TOOLS = [tool for tool in client.tools.list() if tool.qualified_name.startswith("Google")]
+app.state.ARCADE_TOOLS = []
+if '*' in app.state.config.ARCADE_PATTERNS:
+    app.state.ARCADE_TOOLS = [tool for tool in client.tools.list()]
+else:
+    for pattern in app.state.config.ARCADE_PATTERNS:
+        app.state.ARCADE_TOOLS.extend([tool for tool in client.tools.list() if re.match(pattern, tool.qualified_name)])
 
+print("ARCADE_TOOLS: +", '\n'.join([tool.qualified_name for tool in app.state.ARCADE_TOOLS]))
 ########################################
 #
 # UPSTAGE
