@@ -389,6 +389,7 @@ async def chat_completion_arcade_tools_handler(
 
     def arcade_tool_callable(tool_name, user_id, event_emitter):
         async def _callable(**input_data):
+            log.debug(f"{input_data=}")
             auth_response = client.tools.authorize(
                 tool_name=tool_name,
                 user_id=user_id,
@@ -570,7 +571,7 @@ async def chat_completion_arcade_tools_handler(
                             tool_result.remove(item)
 
                 if isinstance(tool_result, dict) or isinstance(tool_result, list):
-                    tool_result = json.dumps(tool_result, indent=2)
+                    tool_result = json.dumps(tool_result, indent=2, ensure_ascii=False)
 
                 if isinstance(tool_result, str):
                     tool = tools[tool_function_name]
