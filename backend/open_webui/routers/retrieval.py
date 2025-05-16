@@ -270,13 +270,13 @@ async def update_embedding_config(
                     form_data.ollama_config.key
                 )
 
-            if form_data.upstage_config is not None:
-                request.app.state.config.RAG_UPSTAGE_API_BASE_URL = (
-                    form_data.upstage_config.url
-                )
-                request.app.state.config.RAG_UPSTAGE_API_KEY = (
-                    form_data.upstage_config.key
-                )
+            # if form_data.upstage_config is not None:
+            #     request.app.state.config.RAG_UPSTAGE_API_BASE_URL = (
+            #         form_data.upstage_config.url
+            #     )
+            #     request.app.state.config.RAG_UPSTAGE_API_KEY = (
+            #         form_data.upstage_config.key
+            #     )
 
             request.app.state.config.RAG_EMBEDDING_BATCH_SIZE = (
                 form_data.embedding_batch_size
