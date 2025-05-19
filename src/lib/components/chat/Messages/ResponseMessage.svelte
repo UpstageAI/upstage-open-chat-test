@@ -875,7 +875,41 @@
 						{/if}
 					</div>
 				</div>
+				{#if (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length > 0}
+					{@const status = (
+						message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]
+					).at(-1)}
+					{#if !status?.hidden}
+						{#if status?.auth_url}
+						<div class="status-description items-center gap-2 py-3">
+							<p class="text-sm mb-1">{$i18n.t(`If you've completed the authentication, click the button below to retry the previous command.`)}</p>
+							<button
+								class="text-sm px-2 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-200 transition rounded"
+								on:click={() => {
+									regenerateResponse(message);
 
+									(model?.actions ?? []).forEach((action) => {
+										dispatch('action', {
+											id: action.id,
+											event: {
+												id: 'regenerate-response',
+												data: {
+													messageId: message.id
+												}
+											}
+										});
+									});
+								}}
+								>
+								{$i18n.t('Authentication Complete')}
+							</button>
+									
+										
+						</div>
+						{/if}
+					{/if}
+					
+				{/if}
 				{#if !edit}
 					<div
 						bind:this={buttonsContainerElement}
