@@ -424,29 +424,46 @@ async def chat_completion_arcade_tools_handler(
                 }
             )
 
-            start_time = time.time()
+            try:
 
-            response = client.tools.execute(
-                tool_name=tool_name,
-                input=input_data,
-                user_id=user_id,
-            )
+                start_time = time.time()
 
-            await event_emitter(
-                {
-                    "type": "status",
-                    "data": {
-                        "action": "arcade_tool",
-                        "description": f"Tool {tool_name} executed with status {response.status} for {int(time.time() - start_time)} seconds",
-                        "done": True,
-                    },
+                response = client.tools.execute(
+                    tool_name=tool_name,
+                    input=input_data,
+                    user_id=user_id,
+                )
+
+                await event_emitter(
+                    {
+                        "type": "status",
+                        "data": {
+                            "action": "arcade_tool",
+                            "description": f"Tool {tool_name} executed with status {response.status} for {int(time.time() - start_time)} seconds",
+                            "done": True,
+                        },
+                    }
+                )
+                return {
+                    "result": response.output.value,
+                    "status": response.status,
+                    "description": f"Tool {tool_name} executed with status {response.status}",
                 }
-            )
-            return {
-                "result": response.output.value,
-                "status": response.status,
-                "description": f"Tool {tool_name} executed with status {response.status}",
-            }
+            except Exception as e:
+                log.exception(e)
+
+                await event_emitter(
+                    {
+                        "type": "status",
+                        "data": {"action": "arcade_tool", "description": f"Error executing tool {tool_name}", "done": True},
+                    }
+                )
+
+                return {
+                    "result": None,
+                    "status": "error",
+                    "description": f"Error executing tool {tool_name} with error {e}",
+                }
         
         return _callable
 
@@ -458,6 +475,18 @@ async def chat_completion_arcade_tools_handler(
             }
             for tool in arcade_tools
         ]
+
+        await event_emitter(
+            {
+                "type": "status",
+                "data": {
+                    "action": "arcade_tool",
+                    "description": f"List of all Arcade tools",
+                    "done": True,
+                },
+            }
+        )
+
         return {
             "result": tools_list,
             "status": "completed",
