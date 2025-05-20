@@ -312,7 +312,7 @@ async def chat_completion_tools_handler(
 
 # new
 async def chat_completion_arcade_tools_handler(
-    request: Request, body: dict, extra_params: dict, user: UserModel, models
+    request: Request, body: dict, extra_params: dict, user: UserModel, models, arcade_tools
 ) -> tuple[dict, dict]:
     from arcadepy import Arcade
     client = Arcade(api_key=request.app.state.config.ARCADE_API_KEY)
@@ -365,7 +365,8 @@ async def chat_completion_arcade_tools_handler(
     skip_files = False
     sources = []
 
-    tools = request.app.state.ARCADE_TOOLS
+    # tools = request.app.state.ARCADE_TOOLS
+    tools = arcade_tools
 
     specs = [
         {
@@ -455,7 +456,7 @@ async def chat_completion_arcade_tools_handler(
                 "name": tool.qualified_name,
                 "description": tool.description
             }
-            for tool in request.app.state.ARCADE_TOOLS
+            for tool in arcade_tools
         ]
         return {
             "result": tools_list,
@@ -1499,7 +1500,19 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     log.debug(f"{tool_servers=}")
 
     tools_dict = {}
+    arcade_tools = []
+    arcade_tool_mapper = {}
+    for idx, tool in enumerate(request.app.state.ARCADE_TOOLS):
+        arcade_tool_mapper[tool.qualified_name] = tool
     try:
+        for tool_id in tool_ids:
+            if tool_id.startswith("arcade:"):
+                arcade_toolkit_idx = int(tool_id.split(":")[1])
+                if request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('enabled'):
+                    for tool in request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('tools'):
+                        if tool.get('enabled'):
+                            arcade_tools.append(arcade_tool_mapper[tool.get('name')])
+
         if tool_ids:
             tools_dict = get_tools(
                 request,
@@ -1549,7 +1562,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     # arcade tools using part
     try:
         form_data, flags = await chat_completion_arcade_tools_handler(
-            request, form_data, extra_params, user, models
+            request, form_data, extra_params, user, models, arcade_tools
         )
         sources.extend(flags.get("sources", []))
 
