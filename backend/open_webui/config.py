@@ -894,14 +894,14 @@ ARCADE_API_KEY = PersistentConfig(
     os.environ.get("ARCADE_API_KEY", ""),
 )
 
-ARCADE_PATTERNS = PersistentConfig(
-    "ARCADE_PATTERNS",
-    "arcade.patterns",
-    [
-        pattern.strip()
-        for pattern in os.environ.get("ARCADE_PATTERNS", "*").split(",")
-    ],
-)
+# ARCADE_PATTERNS = PersistentConfig(
+#     "ARCADE_PATTERNS",
+#     "arcade.patterns",
+#     [
+#         pattern.strip()
+#         for pattern in os.environ.get("ARCADE_PATTERNS", "*").split(",")
+#     ],
+# )
 
 ####################################
 # OPENAI_API
@@ -972,6 +972,17 @@ TOOL_SERVER_CONNECTIONS = PersistentConfig(
     "tool_server.connections",
     [],
 )
+
+####################################
+# ARCADE_TOOLS
+####################################
+
+ARCADE_TOOLS_CONFIG = PersistentConfig(
+    "ARCADE_TOOLS_CONFIG",
+    "arcade.tools_config",
+    [],
+)
+
 
 ####################################
 # WEBUI

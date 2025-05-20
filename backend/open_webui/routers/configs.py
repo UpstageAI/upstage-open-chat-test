@@ -138,6 +138,49 @@ async def verify_tool_servers_config(
 
 
 ############################
+# Arcade Tools Config
+############################
+
+class ArcadeTool(BaseModel):
+    name: str
+    description: str | None = None
+    enabled: bool
+
+class ArcadeToolKit(BaseModel):
+    toolkit: str
+    description: str | None = None
+    enabled: bool
+    tools: list[ArcadeTool]
+
+
+class ArcadeToolsConfigForm(BaseModel):
+    ARCADE_TOOLS_CONFIG: list[ArcadeToolKit]
+
+
+@router.get("/arcade_tools", response_model=ArcadeToolsConfigForm)
+async def get_arcade_tools_config(request: Request, user=Depends(get_admin_user)):
+    return {
+        "ARCADE_TOOLS_CONFIG": request.app.state.config.ARCADE_TOOLS_CONFIG,
+    }
+
+
+@router.post("/arcade_tools", response_model=ArcadeToolsConfigForm)
+async def set_arcade_tools_config(
+    request: Request,
+    form_data: ArcadeToolsConfigForm,
+    user=Depends(get_admin_user),
+):
+    request.app.state.config.ARCADE_TOOLS_CONFIG = [
+        tool_kit.model_dump() for tool_kit in form_data.ARCADE_TOOLS_CONFIG
+    ]
+
+    return {
+        "ARCADE_TOOLS_CONFIG": request.app.state.config.ARCADE_TOOLS_CONFIG,
+    }
+
+
+
+############################
 # CodeInterpreterConfig
 ############################
 class CodeInterpreterConfigForm(BaseModel):

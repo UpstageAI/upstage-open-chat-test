@@ -70,6 +70,24 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             )
         )
 
+    for idx, tool_kit in enumerate(request.app.state.config.ARCADE_TOOLS_CONFIG):
+        if tool_kit.get('enabled'):
+            tools.append(
+                ToolUserResponse(
+                    **{
+                        "id": f"arcade:{idx}",
+                        "user_id": f"arcade:{idx}",
+                        "name": tool_kit.get('toolkit'),
+                        "meta": {
+                            "description": tool_kit.get('description'),
+                        },
+                        "access_control": None,
+                        "updated_at": int(time.time()),
+                        "created_at": int(time.time()),
+                    }
+                )
+            )
+
     if user.role != "admin":
         tools = [
             tool
