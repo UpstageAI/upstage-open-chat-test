@@ -2,6 +2,7 @@
 	import { onMount, getContext } from 'svelte';
 	import { getArcadeTools, setArcadeTools } from '$lib/apis/configs';
 	import { toast } from 'svelte-sonner';
+	import Switch from '$lib/components/common/Switch.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
 
 	const i18n: any = getContext('i18n');
@@ -75,13 +76,8 @@
 									<div class="font-medium">{tool.name}</div>
 									<div class="text-sm text-gray-500">{tool.description}</div>
 								</div>
-								<button
-									type="button"
-									class={`px-4 py-2 rounded-md text-white ${tool.enabled ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} transition-colors`}
-									on:click={() => toggleTool(toolkit.toolkit, tool.name)}
-								>
-									{tool.enabled ? 'Enable' : 'Disable'}
-								</button>
+								<Switch bind:state={tool.enabled} />
+								
 							</div>
 						{/each}
 					</div>
