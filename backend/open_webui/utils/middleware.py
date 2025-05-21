@@ -1534,15 +1534,16 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     for idx, tool in enumerate(request.app.state.ARCADE_TOOLS):
         arcade_tool_mapper[tool.qualified_name] = tool
     try:
-        for tool_id in tool_ids:
-            if tool_id.startswith("arcade:"):
-                arcade_toolkit_idx = int(tool_id.split(":")[1])
-                if request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('enabled'):
-                    for tool in request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('tools'):
-                        if tool.get('enabled'):
-                            arcade_tools.append(arcade_tool_mapper[tool.get('name')])
-
         if tool_ids:
+            for tool_id in tool_ids:
+                if tool_id.startswith("arcade:"):
+                    arcade_toolkit_idx = int(tool_id.split(":")[1])
+                    if request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('enabled'):
+                        for tool in request.app.state.config.ARCADE_TOOLS_CONFIG[arcade_toolkit_idx].get('tools'):
+                            if tool.get('enabled'):
+                                arcade_tools.append(arcade_tool_mapper[tool.get('name')])
+
+        
             tools_dict = get_tools(
                 request,
                 tool_ids,
@@ -1590,10 +1591,11 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     
     # arcade tools using part
     try:
-        form_data, flags = await chat_completion_arcade_tools_handler(
-            request, form_data, extra_params, user, models, arcade_tools
-        )
-        sources.extend(flags.get("sources", []))
+        if arcade_tools:
+            form_data, flags = await chat_completion_arcade_tools_handler(
+                request, form_data, extra_params, user, models, arcade_tools
+            )
+            sources.extend(flags.get("sources", []))
 
     except Exception as e:
         log.exception(e)
