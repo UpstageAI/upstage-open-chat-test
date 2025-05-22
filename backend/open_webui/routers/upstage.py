@@ -96,6 +96,7 @@ def get_model_list(idx):
             for model_id in [
                 "solar-pro",
                 "solar-mini",
+                "solar-pro2-preview"
             ]
         ],
     }
@@ -805,6 +806,8 @@ async def generate_chat_completion(
         payload["logit_bias"] = json.loads(
             convert_logit_bias_input_to_json(payload["logit_bias"])
         )
+
+    # payload["reasoning_effort"] = "high"
 
     # Convert image_url to text using ocr
     try:
