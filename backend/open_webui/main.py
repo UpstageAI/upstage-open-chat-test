@@ -525,9 +525,9 @@ if app.state.config.ARCADE_TOOLS_CONFIG == []:
         arcade_tool_mapper[tool.qualified_name] = tool
         
     for toolset in app.state.ARCADE_TOOLS_TO_DISPLAY.keys():
-        tools = []
+        arcade_tools = []
         for tool in app.state.ARCADE_TOOLS_TO_DISPLAY[toolset]:
-                tools.append({
+                arcade_tools.append({
                     "name": tool,
                     "description": arcade_tool_mapper[tool].description,
                 "enabled": True,
@@ -536,7 +536,7 @@ if app.state.config.ARCADE_TOOLS_CONFIG == []:
             "toolkit": toolset,
             "description": None,
             "enabled": True,
-            "tools": tools,
+            "tools": arcade_tools,
         })
 
 
