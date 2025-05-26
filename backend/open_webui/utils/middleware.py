@@ -547,6 +547,12 @@ async def chat_completion_arcade_tools_handler(
         log.debug(f"{content=}")
 
         if not content:
+            await event_emitter(
+                {
+                    "type": "status",
+                    "data": {"action": "arcade_tool", "description": "No response from tool", "done": True},
+                }
+            )
             return body, {}
 
         try:
