@@ -983,6 +983,50 @@ ARCADE_TOOLS_CONFIG = PersistentConfig(
     [],
 )
 
+ARCADE_TOOLS_TO_DISPLAY = {
+    "Google.Calendar": [
+        "Google.ListCalendars",
+        "Google.CreateEvent",
+        "Google.ListEvents",
+        "Google.UpdateEvent",
+        "Google.DeleteEvent",
+        "Google.FindTimeSlotsWhenEveryoneIsFree",
+    ],
+    "Google.Contacts": [
+        "Google.SearchContactsByEmail",
+        "Google.SearchContactsByName",
+        "Google.CreateContact",
+    ],
+    "Google.Docs": [
+        "Google.GetDocumentById",
+        "Google.InsertTextAtEndOfDocument",
+        "Google.CreateBlankDocument",
+        "Google.CreateDocumentFromText",
+    ],
+    "Google.Gmail": [
+        "Google.SendEmail",
+        "Google.SendDraftEmail",
+        "Google.WriteDraftEmail",
+        "Google.UpdateDraftEmail",
+        "Google.DeleteDraftEmail",
+        "Google.TrashEmail",
+        "Google.ListDraftEmails",
+        "Google.ListEmailsByHeader",
+        "Google.ListEmails",
+        "Google.SearchThreads",
+        "Google.ListThreads",
+        "Google.GetThread",
+    ],
+    "Web": [
+        "Web.ScrapeUrl",
+        "Web.CrawlWebsite",
+        "Web.GetCrawlStatus",
+        "Web.GetCrawlData",
+        "Web.CancelCrawl",
+        "Web.MapWebsite",
+    ],
+}
+
 
 ####################################
 # WEBUI

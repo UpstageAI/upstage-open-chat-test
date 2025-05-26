@@ -107,6 +107,7 @@ from open_webui.config import (
     # Arcade
     ARCADE_API_KEY,
     ARCADE_TOOLS_CONFIG,
+    ARCADE_TOOLS_TO_DISPLAY,
     # Upstage
     ENABLE_UPSTAGE_API,
     UPSTAGE_API_KEYS,
@@ -504,6 +505,7 @@ app.state.OPENAI_MODELS = {}
 app.state.config.ARCADE_API_KEY = ARCADE_API_KEY
 app.state.config.ARCADE_TOOLS_CONFIG = ARCADE_TOOLS_CONFIG
 app.state.ARCADE_TOOLS = []
+app.state.ARCADE_TOOLS_TO_DISPLAY = ARCADE_TOOLS_TO_DISPLAY
 
 
 try:
@@ -515,32 +517,27 @@ except Exception as e:
     pass
 
 # print(app.state.ARCADE_TOOLS)
-
 if app.state.config.ARCADE_TOOLS_CONFIG == []:
-    toolkit_map = {}
-    index = 0
+
+
+    arcade_tool_mapper = {}
     for tool in app.state.ARCADE_TOOLS:
-        if tool.toolkit.name not in toolkit_map:
-            toolkit_map[tool.toolkit.name] = index
-            index += 1
-            app.state.config.ARCADE_TOOLS_CONFIG.append({
-                "toolkit": tool.toolkit.name,
-                "description": tool.toolkit.description,
-                "enabled": False,
-                "tools": [
-                    {
-                        "name": tool.qualified_name,
-                        "description": tool.description,
-                        "enabled": False,
-                    }
-                ],
+        arcade_tool_mapper[tool.qualified_name] = tool
+        
+    for toolset in app.state.ARCADE_TOOLS_TO_DISPLAY.keys():
+        tools = []
+        for tool in app.state.ARCADE_TOOLS_TO_DISPLAY[toolset]:
+                tools.append({
+                    "name": tool,
+                    "description": arcade_tool_mapper[tool].description,
+                "enabled": True,
             })
-        else:
-            app.state.config.ARCADE_TOOLS_CONFIG[toolkit_map[tool.toolkit.name]]["tools"].append({
-                "name": tool.qualified_name,
-                "description": tool.description,
-                "enabled": False,
-            })
+        app.state.config.ARCADE_TOOLS_CONFIG.append({
+            "toolkit": toolset,
+            "description": None,
+            "enabled": True,
+            "tools": tools,
+        })
 
 
 ########################################

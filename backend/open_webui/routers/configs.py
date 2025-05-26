@@ -178,6 +178,58 @@ async def set_arcade_tools_config(
         "ARCADE_TOOLS_CONFIG": request.app.state.config.ARCADE_TOOLS_CONFIG,
     }
 
+@router.post("/arcade_tools/reset")
+async def reset_arcade_tools_config(request: Request, user=Depends(get_admin_user)):
+    request.app.state.config.ARCADE_TOOLS_CONFIG = []
+
+    arcade_tool_mapper = {}
+    for tool in request.app.state.ARCADE_TOOLS:
+        arcade_tool_mapper[tool.qualified_name] = tool
+    
+    for toolset in request.app.state.ARCADE_TOOLS_TO_DISPLAY.keys():
+        tools = []
+        for tool in request.app.state.ARCADE_TOOLS_TO_DISPLAY[toolset]:
+            tools.append({
+                "name": tool,
+                "description": arcade_tool_mapper[tool].description,
+                "enabled": True,
+            })
+        request.app.state.config.ARCADE_TOOLS_CONFIG.append({
+            "toolkit": toolset,
+            "description": None,
+            "enabled": True,
+            "tools": tools,
+        })
+
+
+
+    # toolkit_map = {}
+    # index = 0
+    # for tool in request.app.state.ARCADE_TOOLS:
+    #     if tool.toolkit.name not in toolkit_map:
+    #         toolkit_map[tool.toolkit.name] = index
+    #         index += 1
+    #         request.app.state.config.ARCADE_TOOLS_CONFIG.append({
+    #             "toolkit": tool.toolkit.name,
+    #             "description": tool.toolkit.description,
+    #             "enabled": False,
+    #             "tools": [
+    #                 {
+    #                     "name": tool.qualified_name,
+    #                     "description": tool.description,
+    #                     "enabled": False,
+    #                 }
+    #             ],
+    #         })
+    #     else:
+    #         request.app.state.config.ARCADE_TOOLS_CONFIG[toolkit_map[tool.toolkit.name]]["tools"].append({
+    #             "name": tool.qualified_name,
+    #             "description": tool.description,
+    #             "enabled": False,
+    #         })
+    return {
+        "ARCADE_TOOLS_CONFIG": request.app.state.config.ARCADE_TOOLS_CONFIG,
+    }
 
 
 ############################
