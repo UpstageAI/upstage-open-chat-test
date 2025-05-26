@@ -70,8 +70,48 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             )
         )
 
+
+    from arcadepy import Arcade
+    client = Arcade()
+
+    arcade_tool_mapper = {}
+    for idx, tool in enumerate(request.app.state.ARCADE_TOOLS):
+        arcade_tool_mapper[tool.qualified_name] = tool
+
     for idx, tool_kit in enumerate(request.app.state.config.ARCADE_TOOLS_CONFIG):
         if tool_kit.get('enabled'):
+            all_scopes = set()
+            auth_id = None
+            auth_provider_id = None 
+            auth_provider_type = None
+            
+            for tool in tool_kit.get('tools'):
+                arcade_tool = arcade_tool_mapper[tool.get('name')]
+                requirements = arcade_tool.requirements
+                if requirements and requirements.authorization:
+                    auth = requirements.authorization
+                    if auth.oauth2 and auth.oauth2.scopes:
+                        all_scopes.update(auth.oauth2.scopes)
+                    # Use the first non-None values we find
+                    auth_id = auth_id or auth.id
+                    auth_provider_id = auth_provider_id or auth.provider_id
+                    auth_provider_type = auth_provider_type or auth.provider_type
+            
+            if auth_provider_id and auth_provider_type:
+                auth_requirement = {
+                    "provider_id": auth_provider_id,
+                    "provider_type": auth_provider_type,
+                    "oauth2": {
+                        "scopes": list(all_scopes)
+                    }
+                }
+                if auth_id:
+                    auth_requirement["id"] = auth_id
+                else:
+                    auth_requirement["id"] = None
+                    
+                auth_result = client.auth.authorize(auth_requirement=auth_requirement, user_id=user.id)
+
             tools.append(
                 ToolUserResponse(
                     **{
@@ -80,6 +120,8 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
                         "name": tool_kit.get('toolkit'),
                         "meta": {
                             "description": tool_kit.get('description'),
+                            "auth_completed": True if auth_result.status == "completed" else False,
+                            "auth_url": auth_result.url,
                         },
                         "access_control": None,
                         "updated_at": int(time.time()),
