@@ -61,28 +61,23 @@
 >
 	<div class="overflow-y-scroll scrollbar-hidden h-full">
 		{#if tools !== null}
-			{#each tools as toolkit}
-				<div class="mb-8">
-					<h2 class="text-2xl font-bold mb-4">{toolkit.toolkit}</h2>
-					{#if toolkit.description}
-						<p class="text-gray-600 mb-4">{toolkit.description}</p>
-					{/if}
-					<div class="space-y-2">
-						{#each toolkit.tools as tool}
+			<div class="mb-8">
+				<h2 class="text-2xl font-bold mb-4">
+					{$i18n.t('Tool Manager')}
+				</h2>
+				<div class="space-y-2">
+						{#each tools as tool}
 							<div
-								class="flex items-center justify-between p-2 bg-gray-50 dark:text-gray-300 dark:bg-gray-850 rounded-lg shadow"
+								class="flex items-center justify-between px-5 py-2 bg-gray-50 dark:text-gray-300 dark:bg-gray-850 rounded-lg shadow"
 							>
 								<div class="flex-1">
-									<div class="font-medium">{tool.name}</div>
-									<div class="text-sm text-gray-500">{tool.description}</div>
+									<div class="text-lg">{tool.toolkit}</div>
 								</div>
 								<Switch bind:state={tool.enabled} />
-								
 							</div>
 						{/each}
 					</div>
 				</div>
-			{/each}
 		{:else}
 			<div class="flex h-full justify-center">
 				<div class="my-auto">
@@ -90,14 +85,15 @@
 				</div>
 			</div>
 		{/if}
+		<div class="flex justify-end pt-3 text-sm font-medium gap-2">
+			<button
+				type="submit"
+				class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+			>
+				{$i18n.t('Save')}
+			</button>
+		</div>
 	</div>
 
-	<div class="flex justify-end pt-3 text-sm font-medium gap-2">
-		<button
-			type="submit"
-			class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-		>
-			저장
-		</button>
-	</div>
+	
 </form>
