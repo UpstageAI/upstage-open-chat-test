@@ -570,6 +570,12 @@ async def chat_completion_arcade_tools_handler(
                 tool_function_name = tool_call.get("name", None)
 
                 if tool_function_name not in tools:
+                    await event_emitter(
+                        {
+                            "type": "status",
+                            "data": {"action": "arcade_tool", "description": "No response from tool", "done": True},
+                        }
+                    )
                     return body, {}
 
                 tool_function_params = tool_call.get("parameters", {})
@@ -688,6 +694,12 @@ async def chat_completion_arcade_tools_handler(
             log.debug(f"Error: {e}")
             content = None
     except Exception as e:
+        await event_emitter(
+            {
+                "type": "status",
+                "data": {"action": "arcade_tool", "description": "No response from tool", "done": True},
+            }
+        )
         log.debug(f"Error: {e}")
         content = None
 
