@@ -86,15 +86,11 @@
 	export let toolUseEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let reasoningEnabled = false;
-	$: reasoningEnabled =
-		currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort);
 	let currentModels: Model[] = [];
 	$: currentModels = selectedModelIds
 		.map((id) => $models.find((m) => m.id === id))
 		.filter((model): model is Model => model !== undefined);
-	$: reasoningEnabled =
-		currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort);
-
+	
 	$: onChange({
 		prompt,
 		files,
