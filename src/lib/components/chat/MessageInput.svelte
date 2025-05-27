@@ -125,30 +125,6 @@
 		(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.vision ?? true
 	);
 
-	onMount(() => {
-		loaded = true;
-		// console.log('MessageInput component mounted', $models, selectedModels, selectedModelIds, reasoningEnabled);
-		init();
-	});
-
-	let tools = {};
-
-	const init = async () => {
-		if ($_tools === null) {
-			await _tools.set(await getTools(localStorage.token));
-		}
-
-		tools = $_tools.reduce((a, tool, i, arr) => {
-			a[tool.id] = {
-				name: tool.name,
-				description: tool.meta.description,
-				enabled: selectedToolIds.includes(tool.id)
-			};
-
-			return a;
-		}, {});
-	};
-
 	const scrollToBottom = () => {
 		const element = document.getElementById('messages-container');
 		element.scrollTo({
