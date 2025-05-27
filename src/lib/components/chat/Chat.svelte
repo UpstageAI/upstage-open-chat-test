@@ -88,55 +88,59 @@
 	import NotificationToast from '../NotificationToast.svelte';
 	import Spinner from '../common/Spinner.svelte';
 
-	export let chatIdProp = '';
+	export let chatIdProp: string = '';
 
-	let loading = false;
+	let loading: boolean = false;
 
-	const eventTarget = new EventTarget();
-	let controlPane;
-	let controlPaneComponent;
+	const eventTarget: EventTarget = new EventTarget();
+	let controlPane: any;
+	let controlPaneComponent: any;
 
-	let autoScroll = true;
-	let processing = '';
+	let autoScroll: boolean = true;
+	let processing: string = '';
 	let messagesContainerElement: HTMLDivElement;
 
-	let navbarElement;
+	let navbarElement: any;
 
-	let showEventConfirmation = false;
-	let eventConfirmationTitle = '';
-	let eventConfirmationMessage = '';
-	let eventConfirmationInput = false;
-	let eventConfirmationInputPlaceholder = '';
-	let eventConfirmationInputValue = '';
-	let eventCallback = null;
+	let showEventConfirmation: boolean = false;
+	let eventConfirmationTitle: string = '';
+	let eventConfirmationMessage: string = '';
+	let eventConfirmationInput: boolean = false;
+	let eventConfirmationInputPlaceholder: string = '';
+	let eventConfirmationInputValue: string = '';
+	let eventCallback: ((value?: any) => void) | null = null;
 
 	let chatIdUnsubscriber: Unsubscriber | undefined;
 
-	let selectedModels = [''];
+	let selectedModels: string[] = [];
+	$: if ($models && $models.length > 0 && selectedModels.length === 0) {
+		selectedModels = [$models[0].id];
+	}
 	let atSelectedModel: Model | undefined;
-	let selectedModelIds = [];
+	let selectedModelIds: string[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
-	let selectedToolIds = [];
-	let imageGenerationEnabled = false;
-	let webSearchEnabled = false;
-	let codeInterpreterEnabled = false;
+	let selectedToolIds: string[] = [];
+	let imageGenerationEnabled: boolean = false;
+	let webSearchEnabled: boolean = false;
+	let codeInterpreterEnabled: boolean = false;
+	let reasoningEnabled: boolean = false;
 
-	let chat = null;
-	let tags = [];
+	let chat: any = null;
+	let tags: any[] = [];
 
 	let history = {
 		messages: {},
 		currentId: null
 	};
 
-	let taskId = null;
+	let taskId: string | null = null;
 
 	// Chat Input
-	let prompt = '';
-	let chatFiles = [];
-	let files = [];
-	let params = {};
+	let prompt: string = '';
+	let chatFiles: any[] = [];
+	let files: any[] = [];
+	let params: Record<string, any> = {};
 
 	$: if (chatIdProp) {
 		(async () => {
@@ -244,7 +248,7 @@
 		saveChatHandler(_chatId, history);
 	};
 
-	const chatEventHandler = async (event, cb) => {
+	const chatEventHandler = async (event: any, cb?: () => void) => {
 		console.log(event);
 
 		if (event.chat_id === $chatId) {
@@ -1614,7 +1618,8 @@
 						$config?.features?.enable_web_search &&
 						($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 							? webSearchEnabled || ($settings?.webSearch ?? false) === 'always'
-							: false
+							: false,
+					reasoning_effort: reasoningEnabled
 				},
 				variables: {
 					...getPromptVariables(
@@ -2083,6 +2088,7 @@
 								bind:imageGenerationEnabled
 								bind:codeInterpreterEnabled
 								bind:webSearchEnabled
+								bind:reasoningEnabled
 								bind:atSelectedModel
 								toolServers={$toolServers}
 								transparentBackground={$settings?.backgroundImageUrl ?? false}
@@ -2136,6 +2142,7 @@
 								bind:imageGenerationEnabled
 								bind:codeInterpreterEnabled
 								bind:webSearchEnabled
+								bind:reasoningEnabled
 								bind:atSelectedModel
 								transparentBackground={$settings?.backgroundImageUrl ?? false}
 								toolServers={$toolServers}

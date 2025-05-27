@@ -50,6 +50,7 @@
 	import PhotoSolid from '../icons/PhotoSolid.svelte';
 	import Photo from '../icons/Photo.svelte';
 	import CommandLine from '../icons/CommandLine.svelte';
+	import Brain from '../icons/Brain.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 	import ToolServersModal from './ToolServersModal.svelte';
 	import ToolsModal from './ToolsModal.svelte';
@@ -66,9 +67,9 @@
 	export let autoScroll = false;
 
 	export let atSelectedModel: Model | undefined = undefined;
-	export let selectedModels: [''];
+	export let selectedModels: string[] = [];
 
-	let selectedModelIds = [];
+	let selectedModelIds: string[] = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 
 	export let history;
@@ -84,6 +85,15 @@
 	export let webSearchEnabled = false;
 	export let toolUseEnabled = false;
 	export let codeInterpreterEnabled = false;
+	export let reasoningEnabled = false;
+	$: reasoningEnabled =
+		currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort);
+	let currentModels: Model[] = [];
+	$: currentModels = selectedModelIds
+		.map((id) => $models.find((m) => m.id === id))
+		.filter((model): model is Model => model !== undefined);
+	$: reasoningEnabled =
+		currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort);
 
 	$: onChange({
 		prompt,
@@ -92,7 +102,7 @@
 		imageGenerationEnabled,
 		webSearchEnabled,
 		toolUseEnabled,
-		
+		reasoningEnabled
 	});
 
 	let showTools = false;
@@ -121,7 +131,7 @@
 
 	onMount(() => {
 		loaded = true;
-		//console.log('MessageInput component mounted');
+		// console.log('MessageInput component mounted', $models, selectedModels, selectedModelIds, reasoningEnabled);
 		init();
 	});
 
@@ -138,7 +148,7 @@
 				description: tool.meta.description,
 				enabled: true
 			};
-			selectedToolIds = [...selectedToolIds, tool.id]
+			selectedToolIds = [...selectedToolIds, tool.id];
 
 			return a;
 		}, {});
@@ -1191,42 +1201,58 @@
 													</Tooltip>
 												{/if}
 											{/if}
-											<Tooltip
-												content={$i18n.t('Enable Tool Usage')}
-											>
+											<Tooltip content={$i18n.t('Enable Tool Usage')}>
 												<button
-													on:click|preventDefault={() => { 
-														if(toolUseEnabled){
-															Object.keys(tools).forEach(toolId => {
+													on:click|preventDefault={() => {
+														if (toolUseEnabled) {
+															Object.keys(tools).forEach((toolId) => {
 																tools[toolId].enabled = false;
 															});
 															selectedToolIds = [];
 														} else {
-															Object.keys(tools).forEach(toolId => {
+															Object.keys(tools).forEach((toolId) => {
 																tools[toolId].enabled = true;
 															});
 															selectedToolIds = Object.keys(tools);
-														}									
-														return(toolUseEnabled = !toolUseEnabled)
-														}}
+														}
+														return (toolUseEnabled = !toolUseEnabled);
+													}}
 													class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {toolUseEnabled
-															? 'bg-blue-100 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400'
-															: 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}"
-													
+														? 'bg-blue-100 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400'
+														: 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}"
 													aria-label="Available Tools"
 													type="button"
 												>
 													<Wrench className="size-4" strokeWidth="1.75" />
 
-													<span class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]">
+													<span
+														class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+													>
 														Tool Use
 													</span>
 												</button>
 											</Tooltip>
 
-											<Tooltip
-												content={$i18n.t('Tool Auth')}
-											>
+											{#if currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort)}
+												<Tooltip content={$i18n.t('Enable reasoning')} placement="top">
+													<button
+														on:click|preventDefault={() => (reasoningEnabled = !reasoningEnabled)}
+														type="button"
+														class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {reasoningEnabled
+															? 'bg-blue-100 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400'
+															: 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+													>
+														<Brain className="size-4" strokeWidth="1.75" />
+														<span
+															class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+														>
+															Reasoning
+														</span>
+													</button>
+												</Tooltip>
+											{/if}
+
+											<Tooltip content={$i18n.t('Tool Auth')}>
 												<button
 													class="translate-y-[0.5px] flex gap-1 items-center text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg p-1 self-center transition"
 													aria-label="Available Tools"
