@@ -84,6 +84,7 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             auth_id = None
             auth_provider_id = None 
             auth_provider_type = None
+            auth_result = None
             
             for tool in tool_kit.get('tools'):
                 arcade_tool = arcade_tool_mapper[tool.get('name')]
@@ -109,26 +110,45 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
                     auth_requirement["id"] = auth_id
                 else:
                     auth_requirement["id"] = None
-                    
+                log.info(f"{auth_requirement=}")
                 auth_result = client.auth.authorize(auth_requirement=auth_requirement, user_id=user.id)
-
-            tools.append(
-                ToolUserResponse(
-                    **{
-                        "id": f"arcade:{idx}",
-                        "user_id": f"arcade:{idx}",
-                        "name": tool_kit.get('toolkit'),
-                        "meta": {
-                            "description": tool_kit.get('description'),
-                            "auth_completed": True if auth_result.status == "completed" else False,
-                            "auth_url": auth_result.url,
-                        },
-                        "access_control": None,
-                        "updated_at": int(time.time()),
-                        "created_at": int(time.time()),
-                    }
+            
+            if auth_result:
+                tools.append(
+                    ToolUserResponse(
+                        **{
+                            "id": f"arcade:{idx}",
+                            "user_id": f"arcade:{idx}",
+                            "name": tool_kit.get('toolkit'),
+                            "meta": {
+                                "description": tool_kit.get('description'),
+                                "auth_completed": True if auth_result.status == "completed" else False,
+                                "auth_url": auth_result.url,
+                            },
+                            "access_control": None,
+                            "updated_at": int(time.time()),
+                            "created_at": int(time.time()),
+                        }
+                    )
                 )
-            )
+            else:
+                tools.append(
+                    ToolUserResponse(
+                        **{
+                            "id": f"arcade:{idx}",
+                            "user_id": f"arcade:{idx}",
+                            "name": tool_kit.get('toolkit'),
+                            "meta": {
+                                "description": tool_kit.get('description'),
+                                "auth_completed": True,
+                                "auth_url": None,
+                            },
+                            "access_control": None,
+                            "updated_at": int(time.time()),
+                            "created_at": int(time.time()),
+                        }
+                    )
+                )
 
     if user.role != "admin":
         tools = [
