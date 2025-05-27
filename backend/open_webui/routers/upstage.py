@@ -817,7 +817,8 @@ async def generate_chat_completion(
     features = metadata.get("features", {})
     if features:
         if features.get("reasoning_effort", False) == True:
-            payload["reasoning_effort"] = "high"
+            if payload["model"] == "solar-pro2-preview":
+                payload["reasoning_effort"] = "high"
 
     # Convert image_url to text using ocr
     try:
