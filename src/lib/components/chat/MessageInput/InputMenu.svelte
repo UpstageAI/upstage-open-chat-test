@@ -27,34 +27,12 @@
 	export let uploadGoogleDriveHandler: Function;
 	export let uploadOneDriveHandler: Function;
 
-	export let selectedToolIds: string[] = [];
-
 	export let onClose: Function;
 
-	let tools = {};
 	let show = false;
-
-	$: if (show) {
-		init();
-	}
 
 	let fileUploadEnabled = true;
 	$: fileUploadEnabled = $user?.role === 'admin' || $user?.permissions?.chat?.file_upload;
-
-	const init = async () => {
-		if ($_tools === null) {
-			await _tools.set(await getTools(localStorage.token));
-		}
-
-		tools = $_tools.reduce((a, tool, i, arr) => {
-			a[tool.id] = {
-				name: tool.name,
-				description: tool.meta.description,
-				enabled: selectedToolIds.includes(tool.id)
-			};
-			return a;
-		}, {});
-	};
 
 	const detectMobile = () => {
 		const userAgent = navigator.userAgent || navigator.vendor || window.opera;

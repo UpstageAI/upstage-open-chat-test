@@ -4,6 +4,7 @@
 	import Modal from '../common/Modal.svelte';
 	import Switch from '../common/Switch.svelte';
 	import { toast } from 'svelte-sonner';
+	import { tick } from 'svelte';
 
 	interface Tool {
 		id: string;
@@ -23,67 +24,20 @@
 	}
 
 	export let show = false;
+	export let selectedToolIds: string[] = [];
 
 	const i18n = getContext('i18n');
 
 	const handleConnect = (authUrl: string) => {
 		if (authUrl) {
 			window.open(authUrl, '_blank');
+			show = false;
 		}
-	};
-
-	const updateToolAuth = async (tool: Tool, enabled: boolean) => {
-		try {
-			const response = await fetch(`/api/v1/tools/id/${tool.id}/update`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					id: tool.id,
-					name: tool.name,
-					content: '',
-					meta: {
-						...tool.meta,
-						auth_completed: enabled
-					},
-					access_control: tool.access_control || {}
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to update tool auth status');
-			}
-
-			// 성공적으로 업데이트된 경우 tools 스토어를 업데이트
-			tools.update((currentTools: Tool[] | null) => {
-				if (!currentTools) return [];
-				return currentTools.map((currentTool: Tool) => {
-					if (currentTool.id === tool.id) {
-						return {
-							...currentTool,
-							meta: {
-								...currentTool.meta,
-								auth_completed: enabled
-							}
-						};
-					}
-					return currentTool;
-				});
-			});
-		} catch (error) {
-			console.error('Error updating tool auth:', error);
-			toast.error($i18n.t('Failed to update tool authorization'));
-		}
-	};
-
-	const handleSwitchChange = (tool: Tool, enabled: boolean) => {
-		updateToolAuth(tool, enabled);
 	};
 
 	$: toolsList = ($tools || []).map((tool: Tool) => ({
 		...tool,
-		enabled: tool.meta.auth_completed
+		enabled: selectedToolIds.includes(tool.id)
 	}));
 </script>
 
@@ -119,7 +73,18 @@
 					<span class="text-sm">{tool.name}</span>
 				</div>
 				{#if tool.meta.auth_completed}
-					<Switch bind:state={tool.enabled} on:change={(e) => handleSwitchChange(tool, e.detail)} />
+					<Switch
+						state={tool.enabled}
+						on:change={async (e) => {
+							const state = e.detail;
+							await tick();
+							if (state) {
+								selectedToolIds = [...selectedToolIds, tool.id];
+							} else {
+								selectedToolIds = selectedToolIds.filter((id) => id !== tool.id);
+							}
+						}}
+					/>
 				{:else}
 					<button
 						class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
