@@ -1225,7 +1225,7 @@
 											</Tooltip>
 
 											<Tooltip
-												content={$i18n.t('Tool Use')}
+												content={$i18n.t('Tool Auth')}
 											>
 												<button
 													class="translate-y-[0.5px] flex gap-1 items-center text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg p-1 self-center transition"

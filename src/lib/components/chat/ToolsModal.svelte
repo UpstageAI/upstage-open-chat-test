@@ -1,27 +1,94 @@
 <script lang="ts">
-	import { getContext, onMount } from 'svelte';
-	import { models, config, toolServers, tools } from '$lib/stores';
-
-	import { toast } from 'svelte-sonner';
-	import { deleteSharedChatById, getChatById, shareChatById } from '$lib/apis/chats';
-	import { copyToClipboard } from '$lib/utils';
-
+	import { getContext } from 'svelte';
+	import { tools } from '$lib/stores';
 	import Modal from '../common/Modal.svelte';
-	import Link from '../icons/Link.svelte';
-	import Collapsible from '../common/Collapsible.svelte';
+	import Switch from '../common/Switch.svelte';
+	import { toast } from 'svelte-sonner';
 
-	export let logos = [
-		'/assets/icons/Google_Drive_icon.svg',
-		'/assets/icons/Gmail_icon.svg',
-		'/assets/icons/Google_Calendar_icon.svg'
-	];
+	interface Tool {
+		id: string;
+		user_id: string;
+		name: string;
+		meta: {
+			description: string | null;
+			auth_completed: boolean;
+			auth_url: string;
+			manifest: Record<string, unknown>;
+		};
+		access_control: unknown;
+		updated_at: number;
+		created_at: number;
+		user: unknown;
+		enabled?: boolean;
+	}
 
 	export let show = false;
 
 	const i18n = getContext('i18n');
+
+	const handleConnect = (authUrl: string) => {
+		if (authUrl) {
+			window.open(authUrl, '_blank');
+		}
+	};
+
+	const updateToolAuth = async (tool: Tool, enabled: boolean) => {
+		try {
+			const response = await fetch(`/api/v1/tools/id/${tool.id}/update`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					id: tool.id,
+					name: tool.name,
+					content: '',
+					meta: {
+						...tool.meta,
+						auth_completed: enabled
+					},
+					access_control: tool.access_control || {}
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to update tool auth status');
+			}
+
+			// 성공적으로 업데이트된 경우 tools 스토어를 업데이트
+			tools.update((currentTools: Tool[] | null) => {
+				if (!currentTools) return [];
+				return currentTools.map((currentTool: Tool) => {
+					if (currentTool.id === tool.id) {
+						return {
+							...currentTool,
+							meta: {
+								...currentTool.meta,
+								auth_completed: enabled
+							}
+						};
+					}
+					return currentTool;
+				});
+			});
+		} catch (error) {
+			console.error('Error updating tool auth:', error);
+			toast.error($i18n.t('Failed to update tool authorization'));
+		}
+	};
+
+	const handleSwitchChange = (tool: Tool, enabled: boolean) => {
+		updateToolAuth(tool, enabled);
+	};
+
+	$: toolsList = ($tools || []).map((tool: Tool) => ({
+		...tool,
+		enabled: tool.meta.auth_completed
+	}));
 </script>
 
 <Modal bind:show size="md">
+	
 	<div>
 		<div class=" flex justify-between dark:text-gray-300 px-5 pt-4 pb-0.5">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Tools List')}</div>
@@ -46,60 +113,29 @@
 	</div>
 
 	<div class="px-5 py-4 space-y-4 dark:text-gray-300">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor">
-					<path
-						d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
-					/>
-				</svg>
-				<span class="text-sm">GitHub</span>
+		{#each toolsList as tool}
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<span class="text-sm">{tool.name}</span>
+				</div>
+				{#if tool.meta.auth_completed}
+					<Switch bind:state={tool.enabled} on:change={(e) => handleSwitchChange(tool, e.detail)} />
+				{:else}
+					<button
+						class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
+						type="button"
+						on:click={() => handleConnect(tool.meta.auth_url)}
+					>
+						<span class="flex items-center gap-1">
+							<span>Connect</span>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+								<path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clip-rule="evenodd" />
+								<path fill-rule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clip-rule="evenodd" />
+							</svg>
+						</span>
+					</button>
+				{/if}
 			</div>
-			<button
-				class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
-				type="button"
-			>
-				Connect
-			</button>
-		</div>
-
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<img src={logos[0]} alt="Google Drive" width="20" height="20" />
-				<span class="text-sm">Google Drive</span>
-			</div>
-			<button
-				class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
-				type="button"
-			>
-				Connect
-			</button>
-		</div>
-
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<img src={logos[1]} alt="Gmail" width="20" height="20" />
-				<span class="text-sm">Gmail</span>
-			</div>
-			<button
-				class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
-				type="button"
-			>
-				Connect
-			</button>
-		</div>
-
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<img src={logos[2]} alt="Google Calendar" width="20" height="20" />
-				<span class="text-sm">Google Calendar</span>
-			</div>
-			<button
-				class="text-xs px-3 py-1.5 bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-lg font-medium"
-				type="button"
-			>
-				Connect
-			</button>
-		</div>
+		{/each}
 	</div>
 </Modal>
