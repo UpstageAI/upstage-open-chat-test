@@ -336,6 +336,13 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
                     model_list if isinstance(model_list, list) else model_list.get("data", [])
                 ):
                     model["tags"] = tags
+
+            for model in (
+                model_list if isinstance(model_list, list) else model_list.get("data", [])
+            ):
+                if model.get("name", "") == "solar-pro2-preview":
+                    model["reasoning_effort"] = True
+            
             request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
 
         elif (str(idx) not in request.app.state.config.UPSTAGE_API_CONFIGS) and (
