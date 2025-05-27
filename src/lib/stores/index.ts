@@ -27,8 +27,8 @@ export const USAGE_POOL: Writable<null | string[]> = writable(null);
 
 export const theme = writable('system');
 
-export const shortCodesToEmojis = writable(
-	Object.entries(emojiShortCodes).reduce((acc, [key, value]) => {
+export const shortCodesToEmojis = writable<Record<string, string>>(
+	Object.entries(emojiShortCodes).reduce((acc: Record<string, string>, [key, value]) => {
 		if (typeof value === 'string') {
 			acc[value] = key;
 		} else {
@@ -62,7 +62,7 @@ export const toolServers = writable([]);
 
 export const banners: Writable<Banner[]> = writable([]);
 
-export const settings: Writable<Settings> = writable({});
+export const settings: Writable<Settings> = writable({ chatDirection: 'auto' });
 
 export const showSidebar = writable(false);
 export const showSettings = writable(false);
@@ -88,15 +88,18 @@ type BaseModel = {
 	name: string;
 	info?: ModelConfig;
 	owned_by: 'ollama' | 'openai' | 'arena';
+	reasoning_effort?: boolean;
 };
 
 export interface OpenAIModel extends BaseModel {
+	reasoning_effort?: boolean;
 	owned_by: 'openai';
 	external: boolean;
 	source?: string;
 }
 
 export interface OllamaModel extends BaseModel {
+	reasoning_effort?: boolean;
 	owned_by: 'ollama';
 	details: OllamaModelDetails;
 	size: number;
