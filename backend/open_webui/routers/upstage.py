@@ -814,7 +814,10 @@ async def generate_chat_completion(
             convert_logit_bias_input_to_json(payload["logit_bias"])
         )
 
-    # payload["reasoning_effort"] = "high"
+    features = metadata.get("features", {})
+    if features:
+        if features.get("reasoning_effort", False) == True:
+            payload["reasoning_effort"] = "high"
 
     # Convert image_url to text using ocr
     try:
