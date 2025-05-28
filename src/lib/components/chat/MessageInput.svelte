@@ -1195,9 +1195,8 @@
 													on:click|preventDefault={() => {
 														if (!toolUseEnabled && selectedToolIds.length === 0) {
 															toast.error('No tools selected to use');
-														} else {
-															return (toolUseEnabled = !toolUseEnabled);
-														}
+														} 
+														return (toolUseEnabled = !toolUseEnabled);
 													}}
 													class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {toolUseEnabled
 														? 'bg-blue-100 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400'
