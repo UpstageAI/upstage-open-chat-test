@@ -90,7 +90,7 @@
 	$: currentModels = selectedModelIds
 		.map((id) => $models.find((m) => m.id === id))
 		.filter((model): model is Model => model !== undefined);
-	
+
 	$: onChange({
 		prompt,
 		files,
@@ -1190,9 +1190,35 @@
 												</Tooltip>
 											{/if}
 
+											<Tooltip content={$i18n.t('Enable Tool Usage')}>
+												<button
+													on:click|preventDefault={() => {
+														if (!toolUseEnabled && selectedToolIds.length === 0) {
+															toast.error('No tools selected to use');
+														} else {
+															return (toolUseEnabled = !toolUseEnabled);
+														}
+													}}
+													class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {toolUseEnabled
+														? 'bg-blue-100 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400'
+														: 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+													aria-label="Available Tools"
+													type="button"
+												>
+													<Wrench className="size-4" strokeWidth="1.75" />
+
+													<span
+														class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+													>
+														Tool Use
+													</span>
+												</button>
+											</Tooltip>
+
 											<Tooltip content={$i18n.t('Tools')}>
 												<button
-													class="translate-y-[0.5px] flex gap-1 items-center rounded-lg p-1 self-center transition {selectedToolIds.length > 0
+													class="translate-y-[0.5px] flex gap-1 items-center rounded-lg p-1 self-center transition {selectedToolIds.length >
+													0
 														? 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20'
 														: 'text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200'}"
 													aria-label="Available Tools"

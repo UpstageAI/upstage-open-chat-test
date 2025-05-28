@@ -125,6 +125,7 @@
 	let webSearchEnabled: boolean = false;
 	let codeInterpreterEnabled: boolean = false;
 	let reasoningEnabled: boolean = false;
+	let toolUseEnabled: boolean = false;
 
 	let chat: any = null;
 	let tags: any[] = [];
@@ -1600,7 +1601,7 @@
 				},
 
 				files: (files?.length ?? 0) > 0 ? files : undefined,
-				tool_ids: selectedToolIds.length > 0 ? selectedToolIds : undefined,
+				tool_ids: toolUseEnabled && selectedToolIds.length > 0 ? selectedToolIds : undefined,
 				tool_servers: $toolServers,
 
 				features: {
@@ -2089,6 +2090,7 @@
 								bind:codeInterpreterEnabled
 								bind:webSearchEnabled
 								bind:reasoningEnabled
+								bind:toolUseEnabled
 								bind:atSelectedModel
 								toolServers={$toolServers}
 								transparentBackground={$settings?.backgroundImageUrl ?? false}
@@ -2143,6 +2145,7 @@
 								bind:codeInterpreterEnabled
 								bind:webSearchEnabled
 								bind:reasoningEnabled
+								bind:toolUseEnabled
 								bind:atSelectedModel
 								transparentBackground={$settings?.backgroundImageUrl ?? false}
 								toolServers={$toolServers}
