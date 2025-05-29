@@ -984,7 +984,7 @@ ARCADE_TOOLS_CONFIG = PersistentConfig(
 )
 
 ARCADE_TOOLS_TO_DISPLAY = {
-    "Google.Calendar": [
+    "Google Calendar": [
         "Google.ListCalendars",
         "Google.CreateEvent",
         "Google.ListEvents",
@@ -992,18 +992,18 @@ ARCADE_TOOLS_TO_DISPLAY = {
         "Google.DeleteEvent",
         "Google.FindTimeSlotsWhenEveryoneIsFree",
     ],
-    "Google.Contacts": [
+    "Google Contacts": [
         "Google.SearchContactsByEmail",
         "Google.SearchContactsByName",
         "Google.CreateContact",
     ],
-    "Google.Docs": [
+    "Google Docs": [
         "Google.GetDocumentById",
         "Google.InsertTextAtEndOfDocument",
         "Google.CreateBlankDocument",
         "Google.CreateDocumentFromText",
     ],
-    "Google.Gmail": [
+    "Google Gmail": [
         "Google.SendEmail",
         "Google.SendDraftEmail",
         "Google.WriteDraftEmail",
@@ -1024,6 +1024,33 @@ ARCADE_TOOLS_TO_DISPLAY = {
         "Web.GetCrawlData",
         "Web.CancelCrawl",
         "Web.MapWebsite",
+    ],
+    "Outlook Calendar": [
+        "Microsoft.CreateEvent",
+        "Microsoft.GetEvent",
+        "Microsoft.ListEventsInTimeRange",
+    ],
+    "Outlook Mail": [
+        "Microsoft.CreateDraftEmail",
+        "Microsoft.UpdateDraftEmail",
+        "Microsoft.SendDraftEmail",
+        "Microsoft.CreateAndSendEmail",
+        "Microsoft.ReplyToEmail",
+        "Microsoft.ListEmails",
+        "Microsoft.ListEmailsInFolder",
+        "Microsoft.ListEmailsByProperty",
+    ],
+    "Notion": [
+        "NotionToolkit.GetPageContentById",
+        "NotionToolkit.GetPageContentByTitle",
+        "NotionToolkit.CreatePage",
+        "NotionToolkit.SearchByTitle",
+        "NotionToolkit.GetObjectMetadata",
+        "NotionToolkit.GetWorkspaceStructure",
+    ],
+    "Youtube": [
+        "Search.SearchYoutubeVideos",
+        "Search.GetYoutubeVideoDetails",
     ],
 }
 
