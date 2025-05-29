@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { tools } from '$lib/stores';
+	import { tools as _tools } from '$lib/stores';
 	import Modal from '../common/Modal.svelte';
 	import Switch from '../common/Switch.svelte';
 	import { toast } from 'svelte-sonner';
 	import { tick } from 'svelte';
+	import { getTools } from '$lib/apis/tools';
 
 	interface Tool {
 		id: string;
@@ -28,6 +29,26 @@
 
 	const i18n = getContext('i18n');
 
+	$: if (show) {
+		init();
+	}
+
+	let toolsMap = {};
+
+	const init = async () => {
+		await _tools.set(await getTools(localStorage.token));
+
+		toolsMap = $_tools.reduce((a, tool, i, arr) => {
+			a[tool.id] = {
+				name: tool.name,
+				description: tool.meta.description,
+				enabled: selectedToolIds.includes(tool.id)
+			};
+
+			return a;
+		}, {});
+	};
+
 	const handleConnect = (authUrl: string) => {
 		if (authUrl) {
 			window.open(authUrl, '_blank');
@@ -35,7 +56,8 @@
 		}
 	};
 
-	$: toolsList = ($tools || []).map((tool: Tool) => ({
+
+	$: toolsList = ($_tools || []).map((tool: Tool) => ({
 		...tool,
 		enabled: selectedToolIds.includes(tool.id)
 	}));
