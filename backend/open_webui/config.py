@@ -1038,7 +1038,6 @@ ARCADE_TOOLS_TO_DISPLAY = {
         "Microsoft.ReplyToEmail",
         "Microsoft.ListEmails",
         "Microsoft.ListEmailsInFolder",
-        "Microsoft.ListEmailsByProperty",
     ],
     "Notion": [
         "NotionToolkit.GetPageContentById",
