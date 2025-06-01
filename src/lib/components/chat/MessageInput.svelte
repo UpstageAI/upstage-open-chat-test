@@ -1194,7 +1194,8 @@
 												<button
 													on:click|preventDefault={() => {
 														if (!toolUseEnabled && selectedToolIds.length === 0) {
-															toast.error('No tools selected to use');
+															//toast.error('No tools selected to use');
+															showTools = true
 														} 
 														return (toolUseEnabled = !toolUseEnabled);
 													}}
