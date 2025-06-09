@@ -42,6 +42,7 @@ from open_webui.routers.pipelines import (
     process_pipeline_inlet_filter,
     process_pipeline_outlet_filter,
 )
+from open_webui.routers.memories import query_memory, QueryMemoryForm
 
 from open_webui.utils.webhook import post_webhook
 
@@ -239,46 +240,35 @@ async def chat_completion_tools_handler(
                 if isinstance(tool_result, str):
                     tool = tools[tool_function_name]
                     tool_id = tool.get("tool_id", "")
+
+                    tool_name = (
+                        f"{tool_id}/{tool_function_name}"
+                        if tool_id
+                        else f"{tool_function_name}"
+                    )
                     if tool.get("metadata", {}).get("citation", False) or tool.get(
                         "direct", False
                     ):
-
+                        # Citation is enabled for this tool
                         sources.append(
                             {
                                 "source": {
-                                    "name": (
-                                        f"TOOL:" + f"{tool_id}/{tool_function_name}"
-                                        if tool_id
-                                        else f"{tool_function_name}"
-                                    ),
+                                    "name": (f"TOOL:{tool_name}"),
                                 },
-                                "document": [tool_result, *tool_result_files],
+                                "document": [tool_result],
                                 "metadata": [
                                     {
-                                        "source": (
-                                            f"TOOL:" + f"{tool_id}/{tool_function_name}"
-                                            if tool_id
-                                            else f"{tool_function_name}"
-                                        )
+                                        "source": (f"TOOL:{tool_name}"),
+                                        "parameters": tool_function_params,
                                     }
                                 ],
                             }
                         )
                     else:
-                        sources.append(
-                            {
-                                "source": {},
-                                "document": [tool_result, *tool_result_files],
-                                "metadata": [
-                                    {
-                                        "source": (
-                                            f"TOOL:" + f"{tool_id}/{tool_function_name}"
-                                            if tool_id
-                                            else f"{tool_function_name}"
-                                        )
-                                    }
-                                ],
-                            }
+                        # Citation is not enabled for this tool
+                        body["messages"] = add_or_update_user_message(
+                            f"\nTool `{tool_name}` Output: {tool_result}",
+                            body["messages"],
                         )
 
                     if (
@@ -710,6 +700,45 @@ async def chat_completion_arcade_tools_handler(
 
     return body, {"sources": sources}
 
+async def chat_memory_handler(
+    request: Request, form_data: dict, extra_params: dict, user
+):
+    try:
+        results = await query_memory(
+            request,
+            QueryMemoryForm(
+                **{
+                    "content": get_last_user_message(form_data["messages"]) or "",
+                    "k": 3,
+                }
+            ),
+            user,
+        )
+    except Exception as e:
+        log.debug(e)
+        results = None
+
+    user_context = ""
+    if results and hasattr(results, "documents"):
+        if results.documents and len(results.documents) > 0:
+            for doc_idx, doc in enumerate(results.documents[0]):
+                created_at_date = "Unknown Date"
+
+                if results.metadatas[0][doc_idx].get("created_at"):
+                    created_at_timestamp = results.metadatas[0][doc_idx]["created_at"]
+                    created_at_date = time.strftime(
+                        "%Y-%m-%d", time.localtime(created_at_timestamp)
+                    )
+
+                user_context += f"{doc_idx + 1}. [{created_at_date}] {doc}\n"
+
+    form_data["messages"] = add_or_update_system_message(
+        f"User Context:\n{user_context}\n", form_data["messages"], append=True
+    )
+
+    return form_data
+
+# upstream/main 무시. minjoon 버전으로
 async def chat_web_search_handler(
     request: Request, form_data: dict, extra_params: dict, user
 ):
@@ -956,13 +985,20 @@ async def chat_image_generation_handler(
             }
         )
 
-        for image in images:
-            await __event_emitter__(
-                {
-                    "type": "message",
-                    "data": {"content": f"![Generated Image]({image['url']})\n"},
-                }
-            )
+        await __event_emitter__(
+            {
+                "type": "files",
+                "data": {
+                    "files": [
+                        {
+                            "type": "image",
+                            "url": image["url"],
+                        }
+                        for image in images
+                    ]
+                },
+            }
+        )
 
         system_message_content = "<context>User is shown the generated image, tell the user that the image has been generated</context>"
     except Exception as e:
@@ -1189,6 +1225,7 @@ async def chat_completion_files_handler(
                         reranking_function=request.app.state.rf,
                         k_reranker=request.app.state.config.TOP_K_RERANKER,
                         r=request.app.state.config.RELEVANCE_THRESHOLD,
+                        hybrid_bm25_weight=request.app.state.config.HYBRID_BM25_WEIGHT,
                         hybrid_search=request.app.state.config.ENABLE_RAG_HYBRID_SEARCH,
                         full_context=request.app.state.config.RAG_FULL_CONTEXT,
                     ),
@@ -1203,6 +1240,32 @@ async def chat_completion_files_handler(
 
 def apply_params_to_form_data(form_data, model):
     params = form_data.pop("params", {})
+    custom_params = params.pop("custom_params", {})
+
+    open_webui_params = {
+        "stream_response": bool,
+        "function_calling": str,
+        "system": str,
+    }
+
+    for key in list(params.keys()):
+        if key in open_webui_params:
+            del params[key]
+
+    if custom_params:
+        # Attempt to parse custom_params if they are strings
+        for key, value in custom_params.items():
+            if isinstance(value, str):
+                try:
+                    # Attempt to parse the string as JSON
+                    custom_params[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    # If it fails, keep the original string
+                    pass
+
+        # If custom_params are provided, merge them into params
+        params = deep_update(params, custom_params)
+
     if model.get("ollama"):
         form_data["options"] = params
 
@@ -1212,26 +1275,10 @@ def apply_params_to_form_data(form_data, model):
         if "keep_alive" in params:
             form_data["keep_alive"] = params["keep_alive"]
     else:
-        if "seed" in params and params["seed"] is not None:
-            form_data["seed"] = params["seed"]
-
-        if "stop" in params and params["stop"] is not None:
-            form_data["stop"] = params["stop"]
-
-        if "temperature" in params and params["temperature"] is not None:
-            form_data["temperature"] = params["temperature"]
-
-        if "max_tokens" in params and params["max_tokens"] is not None:
-            form_data["max_tokens"] = params["max_tokens"]
-
-        if "top_p" in params and params["top_p"] is not None:
-            form_data["top_p"] = params["top_p"]
-
-        if "frequency_penalty" in params and params["frequency_penalty"] is not None:
-            form_data["frequency_penalty"] = params["frequency_penalty"]
-
-        if "reasoning_effort" in params and params["reasoning_effort"] is not None:
-            form_data["reasoning_effort"] = params["reasoning_effort"]
+        if isinstance(params, dict):
+            for key, value in params.items():
+                if value is not None:
+                    form_data[key] = value
 
         if "logit_bias" in params and params["logit_bias"] is not None:
             try:
@@ -1239,13 +1286,12 @@ def apply_params_to_form_data(form_data, model):
                     convert_logit_bias_input_to_json(params["logit_bias"])
                 )
             except Exception as e:
-                print(f"Error parsing logit_bias: {e}")
+                log.exception(f"Error parsing logit_bias: {e}")
 
     return form_data
 
 
 async def process_chat_payload(request, form_data, user, metadata, model):
-
     form_data = apply_params_to_form_data(form_data, model)
     log.debug(f"form_data: {form_data}")
 
@@ -1487,9 +1533,12 @@ async def process_chat_payload(request, form_data, user, metadata, model):
         raise e
 
     try:
+
         filter_functions = [
             Functions.get_function_by_id(filter_id)
-            for filter_id in get_sorted_filter_ids(model)
+            for filter_id in get_sorted_filter_ids(
+                request, model, metadata.get("filter_ids", [])
+            )
         ]
 
         form_data, flags = await process_filter_functions(
@@ -1504,6 +1553,11 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
     features = form_data.pop("features", None)
     if features:
+        if "memory" in features and features["memory"]:
+            form_data = await chat_memory_handler(
+                request, form_data, extra_params, user
+            )
+
         if "web_search" in features and features["web_search"]:
             form_data = await chat_web_search_handler(
                 request, form_data, extra_params, user
@@ -1627,11 +1681,24 @@ async def process_chat_payload(request, form_data, user, metadata, model):
     # If context is not empty, insert it into the messages
     if len(sources) > 0:
         context_string = ""
-        for source_idx, source in enumerate(sources):
+        citation_idx = {}
+        for source in sources:
             if "document" in source:
-                for doc_idx, doc_context in enumerate(source["document"]):
+                for doc_context, doc_meta in zip(
+                    source["document"], source["metadata"]
+                ):
+                    source_name = source.get("source", {}).get("name", None)
+                    citation_id = (
+                        doc_meta.get("source", None)
+                        or source.get("source", {}).get("id", None)
+                        or "N/A"
+                    )
+                    if citation_id not in citation_idx:
+                        citation_idx[citation_id] = len(citation_idx) + 1
                     context_string += (
-                        f'<source id="{source_idx + 1}">{doc_context}</source>\n'
+                        f'<source id="{citation_idx[citation_id]}"'
+                        + (f' name="{source_name}"' if source_name else "")
+                        + f">{doc_context}</source>\n"
                     )
 
         context_string = context_string.strip()
@@ -1665,7 +1732,12 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             )
 
     # If there are citations, add them to the data_items
-    sources = [source for source in sources if source.get("source", {}).get("name", "")]
+    sources = [
+        source
+        for source in sources
+        if source.get("source", {}).get("name", "")
+        or source.get("source", {}).get("id", "")
+    ]
 
     if len(sources) > 0:
         events.append({"sources": sources})
@@ -1694,7 +1766,38 @@ async def process_chat_response(
         message = message_map.get(metadata["message_id"]) if message_map else None
 
         if message:
-            messages = get_message_list(message_map, message.get("id"))
+            message_list = get_message_list(message_map, metadata["message_id"])
+
+            # Remove details tags and files from the messages.
+            # as get_message_list creates a new list, it does not affect
+            # the original messages outside of this handler
+
+            messages = []
+            for message in message_list:
+                content = message.get("content", "")
+                if isinstance(content, list):
+                    for item in content:
+                        if item.get("type") == "text":
+                            content = item["text"]
+                            break
+
+                if isinstance(content, str):
+                    content = re.sub(
+                        r"<details\b[^>]*>.*?<\/details>|!\[.*?\]\(.*?\)",
+                        "",
+                        content,
+                        flags=re.S | re.I,
+                    ).strip()
+
+                messages.append(
+                    {
+                        **message,
+                        "role": message.get(
+                            "role", "assistant"
+                        ),  # Safe fallback for missing role
+                        "content": content,
+                    }
+                )
 
             if tasks and messages:
                 if TASKS.TITLE_GENERATION in tasks:
@@ -1859,12 +1962,13 @@ async def process_chat_response(
                         metadata["chat_id"],
                         metadata["message_id"],
                         {
+                            "role": "assistant",
                             "content": content,
                         },
                     )
 
                     # Send a webhook notification if the user is not active
-                    if get_active_status_by_user_id(user.id) is None:
+                    if not get_active_status_by_user_id(user.id):
                         webhook_url = Users.get_user_webhook_url_by_id(user.id)
                         if webhook_url:
                             post_webhook(
@@ -1881,8 +1985,34 @@ async def process_chat_response(
 
                     await background_tasks_handler()
 
+            if events and isinstance(events, list) and isinstance(response, dict):
+                extra_response = {}
+                for event in events:
+                    if isinstance(event, dict):
+                        extra_response.update(event)
+                    else:
+                        extra_response[event] = True
+
+                response = {
+                    **extra_response,
+                    **response,
+                }
+
             return response
         else:
+            if events and isinstance(events, list) and isinstance(response, dict):
+                extra_response = {}
+                for event in events:
+                    if isinstance(event, dict):
+                        extra_response.update(event)
+                    else:
+                        extra_response[event] = True
+
+                response = {
+                    **extra_response,
+                    **response,
+                }
+
             return response
 
     # Non standard response
@@ -1907,7 +2037,9 @@ async def process_chat_response(
     }
     filter_functions = [
         Functions.get_function_by_id(filter_id)
-        for filter_id in get_sorted_filter_ids(model)
+        for filter_id in get_sorted_filter_ids(
+            request, model, metadata.get("filter_ids", [])
+        )
     ]
 
     # Streaming response
@@ -2152,6 +2284,9 @@ async def process_chat_response(
 
                             if after_tag:
                                 content_blocks[-1]["content"] = after_tag
+                                tag_content_handler(
+                                    content_type, tags, after_tag, content_blocks
+                                )
 
                             break
                 elif content_blocks[-1]["type"] == content_type:
@@ -2339,6 +2474,9 @@ async def process_chat_response(
                             )
 
                             if data:
+                                if "event" in data:
+                                    await event_emitter(data.get("event", {}))
+
                                 if "selected_model_id" in data:
                                     model_id = data["selected_model_id"]
                                     Chats.upsert_message_to_chat_by_id_and_message_id(
@@ -2383,14 +2521,36 @@ async def process_chat_response(
                                             )
 
                                             if tool_call_index is not None:
-                                                if (
-                                                    len(response_tool_calls)
-                                                    <= tool_call_index
-                                                ):
+                                                # Check if the tool call already exists
+                                                current_response_tool_call = None
+                                                for (
+                                                    response_tool_call
+                                                ) in response_tool_calls:
+                                                    if (
+                                                        response_tool_call.get("index")
+                                                        == tool_call_index
+                                                    ):
+                                                        current_response_tool_call = (
+                                                            response_tool_call
+                                                        )
+                                                        break
+
+                                                if current_response_tool_call is None:
+                                                    # Add the new tool call
+                                                    delta_tool_call.setdefault(
+                                                        "function", {}
+                                                    )
+                                                    delta_tool_call[
+                                                        "function"
+                                                    ].setdefault("name", "")
+                                                    delta_tool_call[
+                                                        "function"
+                                                    ].setdefault("arguments", "")
                                                     response_tool_calls.append(
                                                         delta_tool_call
                                                     )
                                                 else:
+                                                    # Update the existing tool call
                                                     delta_name = delta_tool_call.get(
                                                         "function", {}
                                                     ).get("name")
@@ -2401,16 +2561,14 @@ async def process_chat_response(
                                                     )
 
                                                     if delta_name:
-                                                        response_tool_calls[
-                                                            tool_call_index
-                                                        ]["function"][
-                                                            "name"
-                                                        ] += delta_name
+                                                        current_response_tool_call[
+                                                            "function"
+                                                        ]["name"] += delta_name
 
                                                     if delta_arguments:
-                                                        response_tool_calls[
-                                                            tool_call_index
-                                                        ]["function"][
+                                                        current_response_tool_call[
+                                                            "function"
+                                                        ][
                                                             "arguments"
                                                         ] += delta_arguments
 
@@ -2935,7 +3093,7 @@ async def process_chat_response(
                     )
 
                 # Send a webhook notification if the user is not active
-                if get_active_status_by_user_id(user.id) is None:
+                if not get_active_status_by_user_id(user.id):
                     webhook_url = Users.get_user_webhook_url_by_id(user.id)
                     if webhook_url:
                         post_webhook(
@@ -2976,7 +3134,9 @@ async def process_chat_response(
                 await response.background()
 
         # background_tasks.add_task(post_response_handler, response, events)
-        task_id, _ = create_task(post_response_handler(response, events))
+        task_id, _ = create_task(
+            post_response_handler(response, events), id=metadata["chat_id"]
+        )
         return {"status": True, "task_id": task_id}
 
     else:
