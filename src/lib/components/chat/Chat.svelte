@@ -140,6 +140,7 @@
 	};
 
 	let taskId: string | null = null;
+	let taskIds: string[] | null = null;
 
 	// Chat Input
 	let prompt: string = '';
@@ -1700,7 +1701,7 @@
 						($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 							? webSearchEnabled || ($settings?.webSearch ?? false) === 'always'
 							: false,
-					reasoning_effort: reasoningEnabled
+					reasoning_effort: reasoningEnabled,
 					memory: $settings?.memory ?? false
 				},
 				variables: {
@@ -2132,6 +2133,8 @@
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
+									bind:reasoningEnabled
+									bind:toolUseEnabled
 									bind:atSelectedModel
 									toolServers={$toolServers}
 									transparentBackground={$settings?.backgroundImageUrl ?? false}
@@ -2189,6 +2192,8 @@
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
+									bind:reasoningEnabled
+									bind:toolUseEnabled
 									bind:atSelectedModel
 									transparentBackground={$settings?.backgroundImageUrl ?? false}
 									toolServers={$toolServers}
@@ -2201,6 +2206,8 @@
 											await uploadWeb(data);
 										} else if (type === 'youtube') {
 											await uploadYoutubeTranscription(data);
+										} else if (type === 'google-drive') {
+											await uploadGoogleDriveFile(data);
 										}
 									}}
 									on:submit={async (e) => {
@@ -2215,128 +2222,33 @@
 									}}
 								/>
 							</div>
-						</div>
+						{/if}
+					</div>
+				</Pane>
 
-						<div class=" pb-[1rem]">
-							<MessageInput
-								{history}
-								{selectedModels}
-								bind:files
-								bind:prompt
-								bind:autoScroll
-								bind:selectedToolIds
-								bind:imageGenerationEnabled
-								bind:codeInterpreterEnabled
-								bind:webSearchEnabled
-								bind:reasoningEnabled
-								bind:toolUseEnabled
-								bind:atSelectedModel
-								toolServers={$toolServers}
-								transparentBackground={$settings?.backgroundImageUrl ?? false}
-								{stopResponse}
-								{createMessagePair}
-								onChange={(input) => {
-									if (input.prompt) {
-										localStorage.setItem(`chat-input-${$chatId}`, JSON.stringify(input));
-									} else {
-										localStorage.removeItem(`chat-input-${$chatId}`);
-									}
-								}}
-								on:upload={async (e) => {
-									const { type, data } = e.detail;
-
-									if (type === 'web') {
-										await uploadWeb(data);
-									} else if (type === 'youtube') {
-										await uploadYoutubeTranscription(data);
-									} else if (type === 'google-drive') {
-										await uploadGoogleDriveFile(data);
-									}
-								}}
-								on:submit={async (e) => {
-									if (e.detail || files.length > 0) {
-										await tick();
-										submitPrompt(
-											($settings?.richTextInput ?? true)
-												? e.detail.replaceAll('\n\n', '\n')
-												: e.detail
-										);
-									}
-								}}
-							/>
-
-							<div
-								class="absolute bottom-1 text-xs text-gray-500 text-center line-clamp-1 right-0 left-0"
-							>
-								<!-- {$i18n.t('LLMs can make mistakes. Verify important information.')} -->
-							</div>
-						</div>
-					{:else}
-						<div class="overflow-auto w-full h-full flex items-center">
-							<Placeholder
-								{history}
-								{selectedModels}
-								bind:files
-								bind:prompt
-								bind:autoScroll
-								bind:selectedToolIds
-								bind:imageGenerationEnabled
-								bind:codeInterpreterEnabled
-								bind:webSearchEnabled
-								bind:reasoningEnabled
-								bind:toolUseEnabled
-								bind:atSelectedModel
-								transparentBackground={$settings?.backgroundImageUrl ?? false}
-								toolServers={$toolServers}
-								{stopResponse}
-								{createMessagePair}
-								on:upload={async (e) => {
-									const { type, data } = e.detail;
-
-									if (type === 'web') {
-										await uploadWeb(data);
-									} else if (type === 'youtube') {
-										await uploadYoutubeTranscription(data);
-									}
-								}}
-								on:submit={async (e) => {
-									if (e.detail || files.length > 0) {
-										await tick();
-										submitPrompt(
-											($settings?.richTextInput ?? true)
-												? e.detail.replaceAll('\n\n', '\n')
-												: e.detail
-										);
-									}
-								}}
-							/>
-						</div>
-					{/if}
-				</div>
-			</Pane>
-
-			<ChatControls
-				bind:this={controlPaneComponent}
-				bind:history
-				bind:chatFiles
-				bind:params
-				bind:files
-				bind:pane={controlPane}
-				chatId={$chatId}
-				modelId={selectedModelIds?.at(0) ?? null}
-				models={selectedModelIds.reduce((a, e, i, arr) => {
-					const model = $models.find((m) => m.id === e);
-					if (model) {
-						return [...a, model];
-					}
-					return a;
-				}, [])}
-				{submitPrompt}
-				{stopResponse}
-				{showMessage}
-				{eventTarget}
-			/>
-		</PaneGroup>
+				<ChatControls
+					bind:this={controlPaneComponent}
+					bind:history
+					bind:chatFiles
+					bind:params
+					bind:files
+					bind:pane={controlPane}
+					chatId={$chatId}
+					modelId={selectedModelIds?.at(0) ?? null}
+					models={selectedModelIds.reduce((a, e, i, arr) => {
+						const model = $models.find((m) => m.id === e);
+						if (model) {
+							return [...a, model];
+						}
+						return a;
+					}, [])}
+					{submitPrompt}
+					{stopResponse}
+					{showMessage}
+					{eventTarget}
+				/>
+			</PaneGroup>
+		</div>
 	{:else if loading}
 		<div class=" flex items-center justify-center h-full w-full">
 			<div class="m-auto">

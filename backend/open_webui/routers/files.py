@@ -193,15 +193,15 @@ def upload_file(
                     file_path = Storage.get_file(file_path)
                     result = transcribe(request, file_path)
 
-                        process_file(
-                            request,
-                            ProcessFileForm(file_id=id, content=result.get("text", "")),
-                            user=user,
-                        )
-                    elif (not file.content_type.startswith(("image/", "video/"))) or (
-                        request.app.state.config.CONTENT_EXTRACTION_ENGINE == "external"
-                    ):
-                        process_file(request, ProcessFileForm(file_id=id), user=user)
+                    process_file(
+                        request,
+                        ProcessFileForm(file_id=id, content=result.get("text", "")),
+                        user=user,
+                    )
+                elif (not file.content_type.startswith(("image/", "video/"))) or (
+                    request.app.state.config.CONTENT_EXTRACTION_ENGINE == "external"
+                ):
+                    process_file(request, ProcessFileForm(file_id=id), user=user)
                 else:
                     log.info(
                         f"File type {file.content_type} is not provided, but trying to process anyway"

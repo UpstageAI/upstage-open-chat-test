@@ -2276,4 +2276,3 @@ def process_files_batch(
                 )
 
     return BatchProcessFilesResponse(results=results, errors=errors)
-lts=results, errors=errors)

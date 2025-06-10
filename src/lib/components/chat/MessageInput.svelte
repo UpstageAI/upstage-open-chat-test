@@ -51,8 +51,6 @@
 	import Wrench from '../icons/Wrench.svelte';
 	import CommandLine from '../icons/CommandLine.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
-	import ToolServersModal from './ToolServersModal.svelte';
-	import Wrench from '../icons/Wrench.svelte';
 
 	const i18n = getContext('i18n');
 
