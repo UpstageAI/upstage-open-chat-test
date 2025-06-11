@@ -26,5 +26,5 @@ jobs:
             git checkout dev
             git pull origin dev
             npm install
-            npm run build
+            NODE_OPTIONS="--max-old-space-size=4096" npm run build
             sudo systemctl restart upstage.service
