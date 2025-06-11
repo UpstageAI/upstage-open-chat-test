@@ -24,6 +24,6 @@ jobs:
             git reset --hard HEAD
             git checkout dev
             git pull origin dev
-            npm install
-            npm run build
+            /home/ubuntu/.nvm/versions/node/v20.19.2/bin/npm install
+            /home/ubuntu/.nvm/versions/node/v20.19.2/bin/npm run build
             sudo systemctl restart upstage.service
