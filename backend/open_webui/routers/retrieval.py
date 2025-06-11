@@ -518,10 +518,10 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
             "YOUTUBE_LOADER_PROXY_URL": request.app.state.config.YOUTUBE_LOADER_PROXY_URL,
             "YOUTUBE_LOADER_TRANSLATION": request.app.state.YOUTUBE_LOADER_TRANSLATION,
             "search": {
-                "enabled": request.app.state.config.ENABLE_RAG_WEB_SEARCH,
+                "enabled": request.app.state.config.ENABLE_WEB_SEARCH,
                 "drive": request.app.state.config.ENABLE_GOOGLE_DRIVE_INTEGRATION,
                 "onedrive": request.app.state.config.ENABLE_ONEDRIVE_INTEGRATION,
-                "engine": request.app.state.config.RAG_WEB_SEARCH_ENGINE,
+                "engine": request.app.state.config.WEB_SEARCH_ENGINE,
                 "searxng_query_url": request.app.state.config.SEARXNG_QUERY_URL,
                 "google_pse_api_key": request.app.state.config.GOOGLE_PSE_API_KEY,
                 "google_pse_engine_id": request.app.state.config.GOOGLE_PSE_ENGINE_ID,
@@ -543,10 +543,10 @@ async def get_rag_config(request: Request, user=Depends(get_admin_user)):
                 "bing_search_v7_subscription_key": request.app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY,
                 "exa_api_key": request.app.state.config.EXA_API_KEY,
                 "perplexity_api_key": request.app.state.config.PERPLEXITY_API_KEY,
-                "result_count": request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
-                "trust_env": request.app.state.config.RAG_WEB_SEARCH_TRUST_ENV,
-                "concurrent_requests": request.app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
-                "domain_filter_list": request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+                "result_count": request.app.state.config.WEB_SEARCH_RESULT_COUNT,
+                "trust_env": request.app.state.config.WEB_SEARCH_TRUST_ENV,
+                "concurrent_requests": request.app.state.config.WEB_SEARCH_CONCURRENT_REQUESTS,
+                "domain_filter_list": request.app.state.config.WEB_SEARCH_DOMAIN_FILTER_LIST,
                 "daum_api_key": request.app.state.config.DAUM_API_KEY,
             },
         },
@@ -1874,8 +1874,8 @@ def search_web(request: Request, engine: str, query: str) -> list[SearchResult]:
         return search_daum(
             api_key=request.app.state.config.DAUM_API_KEY,
             query=query,
-            size=request.app.state.config.RAG_WEB_SEARCH_RESULT_COUNT,
-            filter_list=request.app.state.config.RAG_WEB_SEARCH_DOMAIN_FILTER_LIST,
+            size=request.app.state.config.WEB_SEARCH_RESULT_COUNT,
+            filter_list=request.app.state.config.WEB_SEARCH_DOMAIN_FILTER_LIST,
         )
     else:
         raise Exception("No search engine API key found in environment variables")
