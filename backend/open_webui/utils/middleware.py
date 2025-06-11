@@ -822,11 +822,7 @@ async def chat_web_search_handler(
         try:
             results = await process_web_search(
                 request,
-                SearchForm(
-                    **{
-                        "query": searchQuery,
-                    }
-                ),
+                SearchForm(queries=queries),
                 user=user,
             )
 
