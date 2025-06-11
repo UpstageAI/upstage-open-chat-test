@@ -39,6 +39,8 @@
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let webSearchEnabled = false;
+	export let reasoningEnabled = false;
+	export let toolUseEnabled = false;
 
 	export let toolServers = [];
 
@@ -198,6 +200,8 @@
 					bind:imageGenerationEnabled
 					bind:codeInterpreterEnabled
 					bind:webSearchEnabled
+					bind:reasoningEnabled
+					bind:toolUseEnabled
 					bind:atSelectedModel
 					{toolServers}
 					{transparentBackground}

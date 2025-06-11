@@ -37,7 +37,7 @@
 	import VoiceRecording from './MessageInput/VoiceRecording.svelte';
 	import FilesOverlay from './MessageInput/FilesOverlay.svelte';
 	import Commands from './MessageInput/Commands.svelte';
-	import ToolServersModal from './ToolServersModal.svelte';
+	import ToolsModal from './ToolsModal.svelte';
 
 	import RichTextInput from '../common/RichTextInput.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
@@ -49,6 +49,7 @@
 	import GlobeAlt from '../icons/GlobeAlt.svelte';
 	import Photo from '../icons/Photo.svelte';
 	import Wrench from '../icons/Wrench.svelte';
+	import Brain from '../icons/Brain.svelte';
 	import CommandLine from '../icons/CommandLine.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 
@@ -95,7 +96,9 @@
 		selectedToolIds,
 		selectedFilterIds,
 		imageGenerationEnabled,
-		webSearchEnabled
+		webSearchEnabled,
+		toolUseEnabled,
+		reasoningEnabled
 	});
 
 	let showTools = false;
@@ -453,7 +456,7 @@
 
 <FilesOverlay show={dragged} />
 
-<ToolServersModal bind:show={showTools} {selectedToolIds} />
+<ToolsModal bind:show={showTools} bind:selectedToolIds />
 
 {#if loaded}
 	<div class="w-full font-primary">
@@ -879,6 +882,8 @@
 														webSearchEnabled = false;
 														imageGenerationEnabled = false;
 														codeInterpreterEnabled = false;
+														reasoningEnabled = false;
+														toolUseEnabled = false;
 													}
 												}}
 												on:paste={async (e) => {
@@ -1104,6 +1109,8 @@
 													webSearchEnabled = false;
 													imageGenerationEnabled = false;
 													codeInterpreterEnabled = false;
+													reasoningEnabled = false;
+													toolUseEnabled = false;
 												}
 											}}
 											rows="1"
@@ -1227,29 +1234,6 @@
 										</InputMenu>
 
 										<div class="flex gap-[2px] items-center overflow-x-auto scrollbar-none flex-1">
-											{#if toolServers.length + selectedToolIds.length > 0}
-												<Tooltip
-													content={$i18n.t('{{COUNT}} Available Tools', {
-														COUNT: toolServers.length + selectedToolIds.length
-													})}
-												>
-													<button
-														class="translate-y-[0.5px] flex gap-1 items-center text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg p-1 self-center transition"
-														aria-label="Available Tools"
-														type="button"
-														on:click={() => {
-															showTools = !showTools;
-														}}
-													>
-														<Wrench className="size-4" strokeWidth="1.75" />
-
-														<span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-															{toolServers.length + selectedToolIds.length}
-														</span>
-													</button>
-												</Tooltip>
-											{/if}
-
 											{#if $_user}
 												{#if $config?.features?.enable_web_search && ($_user.role === 'admin' || $_user?.permissions?.features?.web_search)}
 													<Tooltip content={$i18n.t('Search the internet')} placement="top">
@@ -1308,6 +1292,75 @@
 													</Tooltip>
 												{/if}
 											{/if}
+											{#if currentModels.length > 0 && currentModels.every((model) => model?.reasoning_effort)}
+												<Tooltip content={$i18n.t('Enable reasoning')} placement="top">
+													<button
+														on:click|preventDefault={() => (reasoningEnabled = !reasoningEnabled)}
+														type="button"
+														class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {reasoningEnabled
+															? ' text-sky-500 dark:text-sky-300 bg-sky-50 dark:bg-sky-200/5'
+															: 'bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'}"
+													>
+														<Brain className="size-4" strokeWidth="1.75" />
+														<span
+															class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+														>
+															Reasoning
+														</span>
+													</button>
+												</Tooltip>
+											{/if}
+											<Tooltip content={$i18n.t('Enable Tool Usage')}>
+												<button
+													on:click|preventDefault={() => {
+														if (!toolUseEnabled && selectedToolIds.length === 0) {
+															//toast.error('No tools selected to use');
+															showTools = true;
+														}
+														return (toolUseEnabled = !toolUseEnabled);
+													}}
+													class="px-1.5 @xl:px-2.5 py-1.5 flex gap-1.5 items-center text-sm rounded-full font-medium transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {toolUseEnabled
+														? ' text-sky-500 dark:text-sky-300 bg-sky-50 dark:bg-sky-200/5'
+														: 'bg-transparent text-gray-600 dark:text-gray-300 '}"
+													aria-label="Available Tools"
+													type="button"
+												>
+													<Wrench className="size-4" strokeWidth="1.75" />
+
+													<span
+														class="hidden @xl:block whitespace-nowrap overflow-hidden text-ellipsis translate-y-[0.5px]"
+													>
+														Tool Use
+													</span>
+												</button>
+											</Tooltip>
+
+											<Tooltip content={$i18n.t('Tools')}>
+												<button
+													class="translate-y-[0.5px] flex gap-1 items-center rounded-lg p-1 self-center transition {selectedToolIds.length >
+													0
+														? ' text-sky-500 dark:text-sky-300 bg-sky-50 dark:bg-sky-200/5'
+														: 'bg-transparent text-gray-600 dark:text-gray-300 '}"
+													aria-label="Available Tools"
+													type="button"
+													on:click={() => {
+														showTools = !showTools;
+													}}
+												>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="1.5"
+														stroke="currentColor"
+														class="w-5 h-5"
+													>
+														<path stroke-linecap="round" d="M4 9.5h16M4 15h16" />
+														<circle cx="9" cy="9.5" r="2" fill="currentColor" />
+														<circle cx="15" cy="15.5" r="2" fill="currentColor" />
+													</svg>
+												</button>
+											</Tooltip>
 										</div>
 									</div>
 

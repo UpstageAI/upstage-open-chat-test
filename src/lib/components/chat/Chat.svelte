@@ -173,6 +173,8 @@
 						webSearchEnabled = input.webSearchEnabled;
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
+						reasoningEnabled = input.reasoningEnabled;
+						toolUseEnabled = input.toolUseEnabled;
 					}
 				} catch (e) {}
 			}
@@ -221,6 +223,8 @@
 		webSearchEnabled = false;
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
+		reasoningEnabled = false;
+		toolUseEnabled = false;
 	};
 
 	const setToolIds = async () => {
@@ -400,11 +404,11 @@
 					console.log('Current Message:', message);
 					console.log('OCR Result Data:', data);
 
-					let prev_message = history.messages[data.message_id]
-					
+					let prev_message = history.messages[data.message_id];
+
 					if (prev_message?.files) {
 						console.log('Before Update - Files:', prev_message.files);
-						prev_message.files = prev_message.files.map(file => {
+						prev_message.files = prev_message.files.map((file) => {
 							if (file.type === 'image') {
 								return {
 									...file,
@@ -493,6 +497,8 @@
 			webSearchEnabled = false;
 			imageGenerationEnabled = false;
 			codeInterpreterEnabled = false;
+			reasoningEnabled = false;
+			toolUseEnabled = false;
 
 			try {
 				const input = JSON.parse(
@@ -507,6 +513,8 @@
 					webSearchEnabled = input.webSearchEnabled;
 					imageGenerationEnabled = input.imageGenerationEnabled;
 					codeInterpreterEnabled = input.codeInterpreterEnabled;
+					reasoningEnabled = input.reasoningEnabled;
+					toolUseEnabled = input.toolUseEnabled;
 				}
 			} catch (e) {}
 		}
