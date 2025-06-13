@@ -629,6 +629,8 @@
 												embeddingModel = 'text-embedding-3-small';
 											} else if (e.target.value === 'azure_openai') {
 												embeddingModel = 'text-embedding-3-small';
+											} else if (e.target.value === 'upstage') {
+												embeddingModel = 'embedding-passage';
 											} else if (e.target.value === '') {
 												embeddingModel = 'sentence-transformers/all-MiniLM-L6-v2';
 											}
@@ -637,6 +639,7 @@
 										<option value="">{$i18n.t('Default (SentenceTransformers)')}</option>
 										<option value="ollama">{$i18n.t('Ollama')}</option>
 										<option value="openai">{$i18n.t('OpenAI')}</option>
+										<option value="upstage">{$i18n.t('Upstage')}</option>
 										<option value="azure_openai">Azure OpenAI</option>
 									</select>
 								</div>
@@ -784,7 +787,7 @@
 							</div>
 						</div>
 
-						{#if embeddingEngine === 'ollama' || embeddingEngine === 'openai' || embeddingEngine === 'azure_openai'}
+						{#if embeddingEngine === 'ollama' || embeddingEngine === 'openai' || embeddingEngine === 'azure_openai' || embeddingEngine === 'upstage'}
 							<div class="  mb-2.5 flex w-full justify-between">
 								<div class=" self-center text-xs font-medium">
 									{$i18n.t('Embedding Batch Size')}
