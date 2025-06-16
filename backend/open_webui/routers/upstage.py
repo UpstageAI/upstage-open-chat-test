@@ -81,7 +81,7 @@ async def send_get_request(url, key=None, user: UserModel = None):
         log.error(f"Connection error: {e}")
         return None
 
-def get_model_list():
+def get_model_list(idx):
     
     model_list = {
         "object": "list",
@@ -93,15 +93,13 @@ def get_model_list():
                 "upstage": {"id": model_id},
                 "urlIdx": idx,
             }
-            for idx, model_id in enumerate(
-                [
-                    "solar-pro",
-                    "solar-mini",
-                ]
-            )
+            for model_id in [
+                "solar-pro",
+                "solar-mini",
+                "solar-pro2-preview"
+            ]
         ],
     }
-
     return model_list
 
 
@@ -296,6 +294,8 @@ async def speech(request: Request, user=Depends(get_verified_user)):
 async def get_all_models_responses(request: Request, user: UserModel) -> list:
     if not request.app.state.config.ENABLE_UPSTAGE_API:
         return []
+    
+    print(request.app.state.config.UPSTAGE_API_CONFIGS)
 
     # Check if API KEYS length is same than API URLS length
     num_urls = len(request.app.state.config.UPSTAGE_API_BASE_URLS)
@@ -310,65 +310,11 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
         else:
             request.app.state.config.UPSTAGE_API_KEYS += [""] * (num_urls - num_keys)
 
-    # request_tasks = []
-    # for idx, url in enumerate(request.app.state.config.UPSTAGE_API_BASE_URLS):
-    #     if (str(idx) not in request.app.state.config.UPSTAGE_API_CONFIGS) and (
-    #         url not in request.app.state.config.UPSTAGE_API_CONFIGS  # Legacy support
-    #     ):
-    #         request_tasks.append(
-    #             send_get_request(
-    #                 f"{url}/models",
-    #                 request.app.state.config.UPSTAGE_API_KEYS[idx],
-    #                 user=user,
-    #             )
-    #         )
-    #     else:
-    #         api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
-    #             str(idx),
-    #             request.app.state.config.UPSTAGE_API_CONFIGS.get(
-    #                 url, {}
-    #             ),  # Legacy support
-    #         )
+    request_tasks = []
+    for idx, url in enumerate(request.app.state.config.UPSTAGE_API_BASE_URLS):
+        if url == "https://api.upstage.ai/v1":
+            model_list = get_model_list(idx)
 
-    #         enable = api_config.get("enable", True)
-    #         model_ids = api_config.get("model_ids", [])
-
-    #         if enable:
-    #             if len(model_ids) == 0:
-    #                 request_tasks.append(
-    #                     send_get_request(
-    #                         f"{url}/models",
-    #                         request.app.state.config.UPSTAGE_API_KEYS[idx],
-    #                         user=user,
-    #                     )
-    #                 )
-    #             else:
-    #                 model_list = {
-    #                     "object": "list",
-    #                     "data": [
-    #                         {
-    #                             "id": model_id,
-    #                             "name": model_id,
-    #                             "owned_by": "upstage",
-    #                             "upstage": {"id": model_id},
-    #                             "urlIdx": idx,
-    #                         }
-    #                         for model_id in model_ids
-    #                     ],
-    #                 }
-
-    #                 request_tasks.append(
-    #                     asyncio.ensure_future(asyncio.sleep(0, model_list))
-    #                 )
-    #         else:
-    #             request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
-
-    # responses = await asyncio.gather(*request_tasks)
-    responses = [get_model_list()]
-
-    for idx, response in enumerate(responses):
-        if response:
-            url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
             api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
                 str(idx),
                 request.app.state.config.UPSTAGE_API_CONFIGS.get(
@@ -381,17 +327,105 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
 
             if prefix_id:
                 for model in (
-                    response if isinstance(response, list) else response.get("data", [])
+                    model_list if isinstance(model_list, list) else model_list.get("data", [])
                 ):
                     model["id"] = f"{prefix_id}.{model['id']}"
 
             if tags:
                 for model in (
-                    response if isinstance(response, list) else response.get("data", [])
+                    model_list if isinstance(model_list, list) else model_list.get("data", [])
                 ):
                     model["tags"] = tags
 
-    log.debug(f"get_all_models:responses() {responses}")
+            for model in (
+                model_list if isinstance(model_list, list) else model_list.get("data", [])
+            ):
+                if model.get("name", "") == "solar-pro2-preview":
+                    model["reasoning_effort"] = True
+            
+            request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
+
+        elif (str(idx) not in request.app.state.config.UPSTAGE_API_CONFIGS) and (
+            url not in request.app.state.config.UPSTAGE_API_CONFIGS  # Legacy support
+        ):
+            request_tasks.append(
+                send_get_request(
+                    f"{url}/models",
+                    request.app.state.config.UPSTAGE_API_KEYS[idx],
+                    user=user,
+                )
+            )
+        else:
+            api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
+                str(idx),
+                request.app.state.config.UPSTAGE_API_CONFIGS.get(
+                    url, {}
+                ),  # Legacy support
+            )
+
+            enable = api_config.get("enable", True)
+            model_ids = api_config.get("model_ids", [])
+
+            if enable:
+                if len(model_ids) == 0:
+                    request_tasks.append(
+                        send_get_request(
+                            f"{url}/models",
+                            request.app.state.config.UPSTAGE_API_KEYS[idx],
+                            user=user,
+                        )
+                    )
+                else:
+                    model_list = {
+                        "object": "list",
+                        "data": [
+                            {
+                                "id": model_id,
+                                "name": model_id,
+                                "owned_by": "upstage",
+                                "upstage": {"id": model_id},
+                                "urlIdx": idx,
+                            }
+                            for model_id in model_ids
+                        ],
+                    }
+
+                    request_tasks.append(
+                        asyncio.ensure_future(asyncio.sleep(0, model_list))
+                    )
+            else:
+                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
+
+    responses = await asyncio.gather(*request_tasks)
+    # responses = [get_model_list1(), get_model_list2()]
+
+    # for idx, response in enumerate(responses):
+    #     if response:
+    #         url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
+    #         api_config = request.app.state.config.UPSTAGE_API_CONFIGS.get(
+    #             str(idx),
+    #             request.app.state.config.UPSTAGE_API_CONFIGS.get(
+    #                 url, {}
+    #             ),  # Legacy support
+    #         )
+
+    #         prefix_id = api_config.get("prefix_id", None)
+    #         tags = api_config.get("tags", [])
+
+    #         if prefix_id:
+    #             for model in (
+    #                 response if isinstance(response, list) else response.get("data", [])
+    #             ):
+    #                 model["id"] = f"{prefix_id}.{model['id']}"
+
+    #         if tags:
+    #             for model in (
+    #                 response if isinstance(response, list) else response.get("data", [])
+    #             ):
+    #                 model["tags"] = tags
+
+    # log.debug(f"get_all_models:responses() {responses}")
+    print(responses)
     return responses
 
 
@@ -531,7 +565,8 @@ async def get_models(
     #             error_detail = f"Unexpected error: {str(e)}"
     #             raise HTTPException(status_code=500, detail=error_detail)
     
-    models = get_model_list()
+    # models = get_model_list()
+    models = await get_all_models(request, user)
 
     if user.role == "user" and not BYPASS_MODEL_ACCESS_CONTROL:
         models["data"] = await get_filtered_models(models, user)
@@ -597,6 +632,85 @@ async def verify_connection(
             raise HTTPException(status_code=500, detail=error_detail)
 
 
+import base64
+import tempfile
+
+async def process_message_with_ocr(msg, api_key, message_content=None):
+    try:
+        url = "https://api.upstage.ai/v1/document-digitization"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        
+        image_data = msg.get("image_url", {}).get("url", "")
+        if image_data.startswith("data:image"):
+            # base64 decode
+            header, b64data = image_data.split(",", 1)
+            image_bytes = base64.b64decode(b64data)
+
+            # save temporarily
+            with tempfile.NamedTemporaryFile(suffix=".png") as temp_file:
+                temp_file.write(image_bytes)
+                temp_file.flush()
+
+                # send to OCR
+                files = {"document": open(temp_file.name, "rb")}
+                data = {"model": "ocr"}
+                response = requests.post(url, headers=headers, files=files, data=data)
+                ocr_result = response.json()
+
+                # 전체 confidence 체크
+                confidence = ocr_result.get("confidence", 0)
+                # log.info(f"ocr_result: {ocr_result}")
+                if confidence < 0.9:
+                    # 현재 메시지의 content에서 언어 감지
+                    is_korean = False
+                    if message_content:
+                        for content in message_content:
+                            if isinstance(content.get("text"), str):
+                                # 한글 문자가 포함되어 있는지 확인
+                                if any('\uAC00' <= char <= '\uD7A3' for char in content.get("text", "")):
+                                    is_korean = True
+                                    break
+                    
+                    error_message = "I'm sorry, but as a text-based AI model, I'm unable to view or analyze images directly. If you need help with the image, please describe its contents in text or ask specific questions about it, and I'll do my best to assist you."
+                    if is_korean:
+                        error_message = "죄송합니다만, 현재 저는 텍스트 기반 AI 모델이라 이미지를 직접 확인하거나 분석할 수 없습니다. 이미지에 대해 도움이 필요하시다면, 이미지의 내용을 텍스트로 설명해 주시거나 구체적인 질문을 해주시면 최대한 도움을 드리겠습니다."
+                    
+                    return {
+                        "type": "image_ocr_error",
+                        "text": error_message,
+                        "confidence": confidence
+                    }
+                else:
+                    # 전체 텍스트
+                    extracted_text = ocr_result.get("text", "")
+
+                    # 단어 + 위치 정보
+                    words_info = []
+                    for page in ocr_result.get("pages", []):
+                        for word in page.get("words", []):
+                            words_info.append({
+                                "text": word.get("text", ""),
+                                "boundingBox": word.get("boundingBox", {}),
+                                "confidence": word.get("confidence", 0)
+                            })
+
+                    return {
+                        "type": "text",
+                        "text": extracted_text,
+                        "words": words_info,
+                        "confidence": confidence
+                    }
+        else:
+            # base64가 아니면 패스하거나 에러처리
+            return {
+                "type": "text",
+                "text": "(Invalid image data)",
+                "confidence": 0
+            }
+    except Exception as e:
+        # log.exception(e)
+        raise e
+
 @router.post("/chat/completions")
 async def generate_chat_completion(
     request: Request,
@@ -646,7 +760,7 @@ async def generate_chat_completion(
             )
 
     await get_all_models(request, user=user)
-    print(request.app.state.UPSTAGE_MODELS)
+    # print(request.app.state.UPSTAGE_MODELS)
     model = request.app.state.UPSTAGE_MODELS.get(model_id)
     if model:
         idx = model["urlIdx"]
@@ -678,10 +792,8 @@ async def generate_chat_completion(
             "role": user.role,
         }
 
-    # url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
-    url = "https://api.upstage.ai/v1"
-    # key = request.app.state.config.UPSTAGE_API_KEYS[idx]
-    key = "up_7PDQIljc9FLgucg4F8c4EVg6jl4DB"
+    url = request.app.state.config.UPSTAGE_API_BASE_URLS[idx]
+    key = request.app.state.config.UPSTAGE_API_KEYS[idx]
 
     # Fix: o1,o3 does not support the "max_tokens" parameter, Modify "max_tokens" to "max_completion_tokens"
     # is_o1_o3 = payload["model"].lower().startswith(("o1", "o3-"))
@@ -702,6 +814,41 @@ async def generate_chat_completion(
             convert_logit_bias_input_to_json(payload["logit_bias"])
         )
 
+    features = metadata.get("features", {})
+    if features:
+        if features.get("reasoning_effort", False) == True:
+            if payload["model"] == "solar-pro2-preview":
+                payload["reasoning_effort"] = "high"
+
+    # Convert image_url to text using ocr
+    try:
+        for message in payload["messages"]:
+            if not isinstance(message["content"], str):
+                for msg_part in message["content"]:
+                    if msg_part.get("type") == "image_ocr_error":
+                        error_message = msg_part.get("text", "Image processing failed.")
+                        if form_data.get("stream", False):
+                            async def error_stream():
+                                yield f"data: {json.dumps({'choices': [{'delta': {'content': error_message}}]})}\n\n"
+                                yield "data: [DONE]\n\n"
+                            return StreamingResponse(error_stream(), media_type="text/event-stream")
+                        else:
+                            return {"choices": [{"message": {"content": error_message}}]}
+            # image_url이 text로 변환된 경우는 그대로 content에 포함
+
+    except Exception as e:
+        # OCR 처리 루프 또는 그 외 로직에서 발생한 예외 처리
+        log.exception(f"Error during message processing in generate_chat_completion: {e}")
+        generic_error_message = "An error occurred while processing your request."
+        if form_data.get("stream", False):
+            async def error_stream():
+                yield f"data: {json.dumps({'choices': [{'delta': {'content': generic_error_message}}]})}\\n\\n"
+                yield "data: [DONE]\\n\\n"
+            return StreamingResponse(error_stream(), media_type="text/event-stream")
+        else:
+            return {"choices": [{"message": {"content": generic_error_message}}]}
+
+    # print("payload", payload)
     payload = json.dumps(payload)
 
     r = None

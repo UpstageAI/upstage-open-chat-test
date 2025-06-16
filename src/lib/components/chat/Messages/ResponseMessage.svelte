@@ -24,7 +24,9 @@
 		getMessageContentParts,
 		sanitizeResponseContent,
 		createMessagesList,
-		formatDate
+		formatDate,
+		removeDetails,
+		removeAllDetails
 	} from '$lib/utils';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -45,6 +47,7 @@
 	import CodeExecutions from './CodeExecutions.svelte';
 	import ContentRenderer from './ContentRenderer.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
+	import FileItem from '$lib/components/common/FileItem.svelte';
 
 	interface MessageType {
 		id: string;
@@ -58,6 +61,7 @@
 			action: string;
 			description: string;
 			urls?: string[];
+			auth_url?: string;
 			query?: string;
 		}[];
 		status?: {
@@ -65,6 +69,7 @@
 			action: string;
 			description: string;
 			urls?: string[];
+			auth_url?: string;
 			query?: string;
 		};
 		done: boolean;
@@ -152,7 +157,13 @@
 	let showRateComment = false;
 
 	const copyToClipboard = async (text) => {
-		const res = await _copyToClipboard(text);
+		text = removeAllDetails(text);
+
+		if (($config?.ui?.response_watermark ?? '').trim() !== '') {
+			text = `${text}\n\n${$config?.ui?.response_watermark}`;
+		}
+
+		const res = await _copyToClipboard(text, $settings?.copyFormatted ?? false);
 		if (res) {
 			toast.success($i18n.t('Copying to clipboard was successful!'));
 		}
@@ -203,6 +214,8 @@
 
 		speaking = true;
 
+		const content = removeAllDetails(message.content);
+
 		if ($config.audio.tts.engine === '') {
 			let voices = [];
 			const getVoicesLoop = setInterval(() => {
@@ -219,7 +232,7 @@
 
 					console.log(voice);
 
-					const speak = new SpeechSynthesisUtterance(message.content);
+					const speak = new SpeechSynthesisUtterance(content);
 					speak.rate = $settings.audio?.tts?.playbackRate ?? 1;
 
 					console.log(speak);
@@ -242,7 +255,7 @@
 			loadingSpeech = true;
 
 			const messageContentParts: string[] = getMessageContentParts(
-				message.content,
+				content,
 				$config?.audio?.tts?.split_on ?? 'punctuation'
 			);
 
@@ -372,7 +385,7 @@
 
 	const editMessageConfirmHandler = async () => {
 		const messageContent = postprocessAfterEditing(editedContent ? editedContent : '');
-		editMessage(message.id, messageContent, false);
+		editMessage(message.id, { content: messageContent }, false);
 
 		edit = false;
 		editedContent = '';
@@ -383,7 +396,7 @@
 	const saveAsCopyHandler = async () => {
 		const messageContent = postprocessAfterEditing(editedContent ? editedContent : '');
 
-		editMessage(message.id, messageContent);
+		editMessage(message.id, { content: messageContent });
 
 		edit = false;
 		editedContent = '';
@@ -555,13 +568,18 @@
 		await tick();
 		if (buttonsContainerElement) {
 			console.log(buttonsContainerElement);
-			buttonsContainerElement.addEventListener('wheel', function (event) {
-				// console.log(event.deltaY);
 
-				event.preventDefault();
-				if (event.deltaY !== 0) {
-					// Adjust horizontal scroll position based on vertical scroll
-					buttonsContainerElement.scrollLeft += event.deltaY;
+			buttonsContainerElement.addEventListener('wheel', function (event) {
+				if (buttonsContainerElement.scrollWidth <= buttonsContainerElement.clientWidth) {
+					// If the container is not scrollable, horizontal scroll
+					return;
+				} else {
+					event.preventDefault();
+
+					if (event.deltaY !== 0) {
+						// Adjust horizontal scroll position based on vertical scroll
+						buttonsContainerElement.scrollLeft += event.deltaY;
+					}
 				}
 			});
 		}
@@ -585,12 +603,12 @@
 		<div class={`shrink-0 ltr:mr-3 rtl:ml-3`}>
 			<ProfileImage
 				src={model?.info?.meta?.profile_image_url ??
-					($i18n.language === 'dg-DG' ? `/doge.png` : `${WEBUI_BASE_URL}/static/favicon.png`)}
+					($i18n.language === 'dg-DG' ? `/doge.png` : `${WEBUI_BASE_URL}/static/favicon.svg`)}
 				className={'size-8'}
 			/>
 		</div>
 
-		<div class="flex-auto w-0 pl-1">
+		<div class="flex-auto w-0 pl-1 relative">
 			<Name>
 				<Tooltip content={model?.name ?? message.model} placement="top-start">
 					<span class="line-clamp-1 text-black dark:text-white">
@@ -610,18 +628,6 @@
 			</Name>
 
 			<div>
-				{#if message?.files && message.files?.filter((f) => f.type === 'image').length > 0}
-					<div class="my-2.5 w-full flex overflow-x-auto gap-2 flex-wrap">
-						{#each message.files as file}
-							<div>
-								{#if file.type === 'image'}
-									<Image src={file.url} alt={message.content} />
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{/if}
-
 				<div class="chat-{message.role} w-full min-w-full markdown-prose">
 					<div>
 						{#if (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length > 0}
@@ -630,12 +636,6 @@
 							).at(-1)}
 							{#if !status?.hidden}
 								<div class="status-description flex items-center gap-2 py-0.5">
-									{#if status?.done === false}
-										<div class="">
-											<Spinner className="size-4" />
-										</div>
-									{/if}
-
 									{#if status?.action === 'web_search' && status?.urls}
 										<WebSearchResults {status}>
 											<div class="flex flex-col justify-center -space-y-0.5">
@@ -690,14 +690,42 @@
 													{$i18n.t('No search query generated')}
 												{:else if status?.description === 'Generating search query'}
 													{$i18n.t('Generating search query')}
+												{:else if status?.description === 'Searching the web'}
+													{$i18n.t('Searching the web...')}
 												{:else}
 													{status?.description}
+												{/if}
+												{#if status?.auth_url}
+													<a href={status?.auth_url} target="_blank">
+														{$i18n.t('Click here to authenticate')}
+													</a>
 												{/if}
 											</div>
 										</div>
 									{/if}
 								</div>
 							{/if}
+						{/if}
+
+						{#if message?.files && message.files?.filter((f) => f.type === 'image').length > 0}
+							<div class="my-1 w-full flex overflow-x-auto gap-2 flex-wrap">
+								{#each message.files as file}
+									<div>
+										{#if file.type === 'image'}
+											<Image src={file.url} alt={message.content} />
+										{:else}
+											<FileItem
+												item={file}
+												url={file.url}
+												name={file.name}
+												type={file.type}
+												size={file?.size}
+												colorClassName="bg-white dark:bg-gray-850 "
+											/>
+										{/if}
+									</div>
+								{/each}
+							</div>
 						{/if}
 
 						{#if edit === true}
@@ -762,8 +790,11 @@
 								</div>
 							</div>
 						{:else}
+							{@const status = (
+								message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]
+							).at(-1)}
 							<div class="w-full flex flex-col relative" id="response-content-container">
-								{#if message.content === '' && !message.error}
+								{#if message.content === '' && !message.error && (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length === 0}
 									<Skeleton />
 								{:else if message.content && message.error !== true}
 									<!-- always show message contents even if there's an error -->
@@ -775,6 +806,7 @@
 										sources={message.sources}
 										floatingButtons={message?.done && !readOnly}
 										save={!readOnly}
+										preview={!readOnly}
 										{model}
 										onTaskClick={async (e) => {
 											console.log(e);
@@ -809,33 +841,34 @@
 										onAddMessages={({ modelId, parentId, messages }) => {
 											addMessages({ modelId, parentId, messages });
 										}}
-										on:update={(e) => {
-											const { raw, oldContent, newContent } = e.detail;
-
+										onSave={({ raw, oldContent, newContent }) => {
 											history.messages[message.id].content = history.messages[
 												message.id
 											].content.replace(raw, raw.replace(oldContent, newContent));
 
 											updateChat();
 										}}
-										on:select={(e) => {
-											const { type, content } = e.detail;
-
-											if (type === 'explain') {
-												submitMessage(
-													message.id,
-													`Explain this section to me in more detail\n\n\`\`\`\n${content}\n\`\`\``
-												);
-											} else if (type === 'ask') {
-												const input = e.detail?.input ?? '';
-												submitMessage(message.id, `\`\`\`\n${content}\n\`\`\`\n${input}`);
-											}
-										}}
 									/>
 								{/if}
-
-								{#if message?.error}
-									<Error content={message?.error?.content ?? message.content} />
+								
+								{#if message?.error && status?.action !== 'web_search'}
+									{#if message?.error?.content.toString().includes('524error')}
+										<!-- <div class="status-description flex items-center gap-2 py-0.5">
+											<div class="">
+												<Spinner className="size-4" />
+											</div>
+											<div class="flex flex-col justify-center -space-y-0.5">
+												<div
+													class="shimmer text-gray-500 dark:text-gray-500 text-base line-clamp-1 text-wrap"
+												>
+													{$i18n.t('Generating response...')}
+												</div>
+											</div>
+										</div>
+										<Skeleton /> -->
+									{:else}
+										<Error content={message?.error?.content ?? message.content} />
+									{/if}
 								{/if}
 
 								{#if (message?.sources || message?.citations) && (model?.info?.meta?.capabilities?.citations ?? true)}
@@ -849,7 +882,41 @@
 						{/if}
 					</div>
 				</div>
+				{#if (message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]).length > 0}
+					{@const status = (
+						message?.statusHistory ?? [...(message?.status ? [message?.status] : [])]
+					).at(-1)}
+					{#if !status?.hidden}
+						{#if status?.auth_url}
+						<div class="status-description items-center gap-2 py-3">
+							<p class="text-sm mb-1">{$i18n.t(`If you've completed the authentication, click the button below to retry the previous command.`)}</p>
+							<button
+								class="text-sm px-2 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-200 transition rounded"
+								on:click={() => {
+									regenerateResponse(message);
 
+									(model?.actions ?? []).forEach((action) => {
+										dispatch('action', {
+											id: action.id,
+											event: {
+												id: 'regenerate-response',
+												data: {
+													messageId: message.id
+												}
+											}
+										});
+									});
+								}}
+								>
+								{$i18n.t('Authentication Complete')}
+							</button>
+									
+										
+						</div>
+						{/if}
+					{/if}
+					
+				{/if}
 				{#if !edit}
 					<div
 						bind:this={buttonsContainerElement}
@@ -1006,83 +1073,85 @@
 									</button>
 								</Tooltip>
 
-								<Tooltip content={$i18n.t('Read Aloud')} placement="bottom">
-									<button
-										id="speak-button-{message.id}"
-										class="{isLastMessage
-											? 'visible'
-											: 'invisible group-hover:visible'} p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
-										on:click={() => {
-											if (!loadingSpeech) {
-												toggleSpeakMessage();
-											}
-										}}
-									>
-										{#if loadingSpeech}
-											<svg
-												class=" w-4 h-4"
-												fill="currentColor"
-												viewBox="0 0 24 24"
-												xmlns="http://www.w3.org/2000/svg"
-											>
-												<style>
-													.spinner_S1WN {
-														animation: spinner_MGfb 0.8s linear infinite;
-														animation-delay: -0.8s;
-													}
-
-													.spinner_Km9P {
-														animation-delay: -0.65s;
-													}
-
-													.spinner_JApP {
-														animation-delay: -0.5s;
-													}
-
-													@keyframes spinner_MGfb {
-														93.75%,
-														100% {
-															opacity: 0.2;
+								{#if $user?.role === 'admin' || ($user?.permissions?.chat?.tts ?? true)}
+									<Tooltip content={$i18n.t('Read Aloud')} placement="bottom">
+										<button
+											id="speak-button-{message.id}"
+											class="{isLastMessage
+												? 'visible'
+												: 'invisible group-hover:visible'} p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
+											on:click={() => {
+												if (!loadingSpeech) {
+													toggleSpeakMessage();
+												}
+											}}
+										>
+											{#if loadingSpeech}
+												<svg
+													class=" w-4 h-4"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+													xmlns="http://www.w3.org/2000/svg"
+												>
+													<style>
+														.spinner_S1WN {
+															animation: spinner_MGfb 0.8s linear infinite;
+															animation-delay: -0.8s;
 														}
-													}
-												</style>
-												<circle class="spinner_S1WN" cx="4" cy="12" r="3" />
-												<circle class="spinner_S1WN spinner_Km9P" cx="12" cy="12" r="3" />
-												<circle class="spinner_S1WN spinner_JApP" cx="20" cy="12" r="3" />
-											</svg>
-										{:else if speaking}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2.3"
-												stroke="currentColor"
-												class="w-4 h-4"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"
-												/>
-											</svg>
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2.3"
-												stroke="currentColor"
-												class="w-4 h-4"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
-												/>
-											</svg>
-										{/if}
-									</button>
-								</Tooltip>
+
+														.spinner_Km9P {
+															animation-delay: -0.65s;
+														}
+
+														.spinner_JApP {
+															animation-delay: -0.5s;
+														}
+
+														@keyframes spinner_MGfb {
+															93.75%,
+															100% {
+																opacity: 0.2;
+															}
+														}
+													</style>
+													<circle class="spinner_S1WN" cx="4" cy="12" r="3" />
+													<circle class="spinner_S1WN spinner_Km9P" cx="12" cy="12" r="3" />
+													<circle class="spinner_S1WN spinner_JApP" cx="20" cy="12" r="3" />
+												</svg>
+											{:else if speaking}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="2.3"
+													stroke="currentColor"
+													class="w-4 h-4"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"
+													/>
+												</svg>
+											{:else}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="2.3"
+													stroke="currentColor"
+													class="w-4 h-4"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+													/>
+												</svg>
+											{/if}
+										</button>
+									</Tooltip>
+								{/if}
 
 								{#if $config?.features.enable_image_generation && ($user?.role === 'admin' || $user?.permissions?.features?.image_generation) && !readOnly}
 									<Tooltip content={$i18n.t('Generate Image')} placement="bottom">
@@ -1382,11 +1451,11 @@
 														actionMessage(action.id, message);
 													}}
 												>
-													{#if action.icon_url}
+													{#if action?.icon}
 														<div class="size-4">
 															<img
-																src={action.icon_url}
-																class="w-4 h-4 {action.icon_url.includes('svg')
+																src={action.icon}
+																class="w-4 h-4 {action.icon.includes('svg')
 																	? 'dark:invert-[80%]'
 																	: ''}"
 																style="fill: currentColor;"
@@ -1418,6 +1487,12 @@
 					{/if}
 				{/if}
 			</div>
+
+			{#if message?.done}
+				<div aria-live="polite" class="sr-only">
+					{message?.content ?? ''}
+				</div>
+			{/if}
 		</div>
 	</div>
 {/key}
