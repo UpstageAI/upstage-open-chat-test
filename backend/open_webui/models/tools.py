@@ -53,6 +53,8 @@ class Tool(Base):
 
 class ToolMeta(BaseModel):
     description: Optional[str] = None
+    auth_completed: Optional[bool] = False
+    auth_url: Optional[str] = None
     manifest: Optional[dict] = {}
 
 
