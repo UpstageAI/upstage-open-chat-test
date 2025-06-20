@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import base64
+import datetime
 
 import asyncio
 from aiocache import cached
@@ -381,6 +382,101 @@ async def chat_completion_arcade_tools_handler(
     def arcade_tool_callable(tool_name, user_id, event_emitter):
         async def _callable(**input_data):
             log.debug(f"{input_data=}")
+            
+            # Auto-set end time for calendar events if only start time is provided
+            if "CreateEvent" in tool_name:
+                try:
+                    from datetime import datetime, timedelta
+                    import re
+                    
+                    # Check for various start time field names and set corresponding end time
+                    start_field = None
+                    end_field = None
+                    start_time_str = None
+                    
+                    # Handle Google Calendar API format: start/end objects with dateTime
+                    if "start" in input_data and "end" not in input_data:
+                        if isinstance(input_data["start"], dict) and "dateTime" in input_data["start"]:
+                            start_time_str = input_data["start"]["dateTime"]
+                            start_field = "start"
+                            end_field = "end"
+                    
+                    # Handle other possible field name combinations
+                    if not start_field:
+                        time_field_pairs = [
+                            ("start_datetime", "end_datetime"),
+                            ("start_time", "end_time"),
+                            ("startDateTime", "endDateTime"),
+                            ("startTime", "endTime"),
+                        ]
+                        
+                        for start_f, end_f in time_field_pairs:
+                            if start_f in input_data and end_f not in input_data:
+                                start_field = start_f
+                                end_field = end_f
+                                start_time_str = input_data[start_f]
+                                break
+                    
+                    if start_field and start_time_str:
+                        # Parse various datetime formats
+                        datetime_formats = [
+                            "%Y-%m-%dT%H:%M:%S%z",      # with timezone
+                            "%Y-%m-%dT%H:%M:%S+09:00",  # with +09:00
+                            "%Y-%m-%dT%H:%M:%S",
+                            "%Y-%m-%d %H:%M:%S",
+                            "%Y-%m-%dT%H:%M",
+                            "%Y-%m-%d %H:%M",
+                            "%Y-%m-%dT%H:%M:%SZ",
+                            "%Y-%m-%dT%H:%M:%S.%fZ",
+                        ]
+                        
+                        start_datetime = None
+                        original_tz_info = ""
+                        
+                        # Extract timezone info if present
+                        if "+09:00" in start_time_str:
+                            original_tz_info = "+09:00"
+                            start_time_clean = start_time_str.replace("+09:00", "")
+                        elif "Z" in start_time_str:
+                            original_tz_info = "Z"
+                            start_time_clean = start_time_str.replace("Z", "")
+                        else:
+                            start_time_clean = start_time_str
+                        
+                        for fmt in datetime_formats:
+                            try:
+                                if "%z" in fmt:
+                                    start_datetime = datetime.strptime(start_time_str, fmt)
+                                else:
+                                    start_datetime = datetime.strptime(start_time_clean, fmt)
+                                break
+                            except ValueError:
+                                continue
+                        
+                        if start_datetime:
+                            # Add 1 hour to start time
+                            end_datetime = start_datetime + timedelta(hours=1)
+                            
+                            # Format end time
+                            if original_tz_info:
+                                end_time_formatted = end_datetime.strftime("%Y-%m-%dT%H:%M:%S") + original_tz_info
+                            elif "T" in start_time_str:
+                                end_time_formatted = end_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+                            else:
+                                end_time_formatted = end_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Set the end time based on the field structure
+                            if start_field == "start" and isinstance(input_data["start"], dict):
+                                # Google Calendar API format
+                                input_data["end"] = {"dateTime": end_time_formatted}
+                            else:
+                                # Simple field format
+                                input_data[end_field] = end_time_formatted
+                            
+                            log.info(f"Auto-set {end_field} for {tool_name}: {end_time_formatted}")
+                except Exception as e:
+                    log.warning(f"Failed to auto-set end time for {tool_name}: {e}")
+            
             auth_response = client.tools.authorize(
                 tool_name=tool_name,
                 user_id=user_id,
@@ -1290,6 +1386,14 @@ def apply_params_to_form_data(form_data, model):
 async def process_chat_payload(request, form_data, user, metadata, model):
     form_data = apply_params_to_form_data(form_data, model)
     log.debug(f"form_data: {form_data}")
+    
+    # 현재 날짜를 시스템 메시지로 추가
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    date_message = {"role": "system", "content": f"오늘의 날짜는 {current_date}입니다."}
+    
+    # 메시지 목록의 맨 앞에 날짜 메시지 추가
+    if "messages" in form_data and isinstance(form_data["messages"], list):
+        form_data["messages"].insert(0, date_message)
 
     event_emitter = get_event_emitter(metadata)
     event_call = get_event_call(metadata)
