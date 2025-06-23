@@ -21,6 +21,7 @@ from open_webui.utils.tools import get_tool_specs
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_access, has_permission
 from open_webui.env import SRC_LOG_LEVELS
+from open_webui.arcade_tools import get_arcade_tools
 
 from open_webui.utils.tools import get_tool_servers_data
 
@@ -31,6 +32,7 @@ log.setLevel(SRC_LOG_LEVELS["MAIN"])
 
 router = APIRouter()
 
+
 ############################
 # GetTools
 ############################
@@ -38,6 +40,7 @@ router = APIRouter()
 
 @router.get("/", response_model=list[ToolUserResponse])
 async def get_tools(request: Request, user=Depends(get_verified_user)):
+    print(f"[DEBUG] get_tools called")
 
     if not request.app.state.TOOL_SERVERS:
         # If the tool servers are not set, we need to set them
@@ -49,6 +52,7 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
         )
 
     tools = Tools.get_tools()
+    
     for server in request.app.state.TOOL_SERVERS:
         tools.append(
             ToolUserResponse(
@@ -74,85 +78,10 @@ async def get_tools(request: Request, user=Depends(get_verified_user)):
             )
         )
 
-
-    from arcadepy import Arcade
-    client = Arcade()
-
-    arcade_tool_mapper = {}
-    for idx, tool in enumerate(request.app.state.ARCADE_TOOLS):
-        arcade_tool_mapper[tool.qualified_name] = tool
-
-    for idx, tool_kit in enumerate(request.app.state.config.ARCADE_TOOLS_CONFIG):
-        if tool_kit.get('enabled'):
-            all_scopes = set()
-            auth_id = None
-            auth_provider_id = None 
-            auth_provider_type = None
-            auth_result = None
-            
-            for tool in tool_kit.get('tools'):
-                arcade_tool = arcade_tool_mapper[tool.get('name')]
-                requirements = arcade_tool.requirements
-                if requirements and requirements.authorization:
-                    auth = requirements.authorization
-                    if auth.oauth2 and auth.oauth2.scopes:
-                        all_scopes.update(auth.oauth2.scopes)
-                    # Use the first non-None values we find
-                    auth_id = auth_id or auth.id
-                    auth_provider_id = auth_provider_id or auth.provider_id
-                    auth_provider_type = auth_provider_type or auth.provider_type
-            
-            if auth_provider_id and auth_provider_type:
-                auth_requirement = {
-                    "provider_id": auth_provider_id,
-                    "provider_type": auth_provider_type,
-                    "oauth2": {
-                        "scopes": list(all_scopes)
-                    }
-                }
-                if auth_id:
-                    auth_requirement["id"] = auth_id
-                else:
-                    auth_requirement["id"] = None
-                log.info(f"{auth_requirement=}")
-                auth_result = client.auth.authorize(auth_requirement=auth_requirement, user_id=user.id)
-            
-            if auth_result:
-                tools.append(
-                    ToolUserResponse(
-                        **{
-                            "id": f"arcade:{idx}",
-                            "user_id": f"arcade:{idx}",
-                            "name": tool_kit.get('toolkit'),
-                            "meta": {
-                                "description": tool_kit.get('description'),
-                                "auth_completed": True if auth_result.status == "completed" else False,
-                                "auth_url": auth_result.url,
-                            },
-                            "access_control": None,
-                            "updated_at": int(time.time()),
-                            "created_at": int(time.time()),
-                        }
-                    )
-                )
-            else:
-                tools.append(
-                    ToolUserResponse(
-                        **{
-                            "id": f"arcade:{idx}",
-                            "user_id": f"arcade:{idx}",
-                            "name": tool_kit.get('toolkit'),
-                            "meta": {
-                                "description": tool_kit.get('description'),
-                                "auth_completed": True,
-                                "auth_url": None,
-                            },
-                            "access_control": None,
-                            "updated_at": int(time.time()),
-                            "created_at": int(time.time()),
-                        }
-                    )
-                )
+    # Add arcade tools
+    arcade_tools = get_arcade_tools(request, user)
+    print(f"[DEBUG] Arcade tools: {len(arcade_tools)} found")
+    tools.extend(arcade_tools)
 
     if user.role != "admin":
         tools = [

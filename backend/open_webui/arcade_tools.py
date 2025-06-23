@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Optional
 from uuid import uuid4
+from fastapi import Request
 
 
 log = logging.getLogger(__name__)
@@ -607,3 +608,93 @@ async def chat_completion_arcade_tools_handler(
 
     return body, {"sources": sources}
 
+
+def get_arcade_tools(request: Request, user) -> list["ToolUserResponse"]:
+    """Extract and process arcade tools from the application state."""
+    print("[DEBUG] get_arcade_tools called")
+    
+    # Import here to avoid circular imports
+    from open_webui.models.tools import ToolUserResponse
+    
+    from arcadepy import Arcade
+    client = Arcade()
+
+    arcade_tools = []
+    arcade_tool_mapper = {}
+    
+    # Check if arcade tools are properly initialized
+    if not hasattr(request.app.state, 'ARCADE_TOOLS'):
+        print("[DEBUG] ARCADE_TOOLS not found in app state")
+        return arcade_tools
+        
+    if not hasattr(request.app.state.config, 'ARCADE_TOOLS_CONFIG'):
+        print("[DEBUG] ARCADE_TOOLS_CONFIG not found in config")
+        return arcade_tools
+    
+    print(f"[DEBUG] Found {len(request.app.state.ARCADE_TOOLS)} arcade tools, {len(request.app.state.config.ARCADE_TOOLS_CONFIG)} tool configs")
+    
+    for idx, tool in enumerate(request.app.state.ARCADE_TOOLS):
+        arcade_tool_mapper[tool.qualified_name] = tool
+
+    for idx, tool_kit in enumerate(request.app.state.config.ARCADE_TOOLS_CONFIG):
+        if tool_kit.get('enabled'):
+            print(f"[DEBUG] Processing enabled tool_kit: {tool_kit.get('toolkit')}")
+            
+            all_scopes = set()
+            auth_id = None
+            auth_provider_id = None 
+            auth_provider_type = None
+            auth_result = None
+            
+            for tool in tool_kit.get('tools', []):
+                tool_name = tool.get('name')
+                
+                if tool_name in arcade_tool_mapper:
+                    arcade_tool = arcade_tool_mapper[tool_name]
+                    requirements = arcade_tool.requirements
+                    
+                    if requirements and requirements.authorization:
+                        auth = requirements.authorization
+                        if auth.oauth2 and auth.oauth2.scopes:
+                            all_scopes.update(auth.oauth2.scopes)
+                        # Use the first non-None values we find
+                        auth_id = auth_id or auth.id
+                        auth_provider_id = auth_provider_id or auth.provider_id
+                        auth_provider_type = auth_provider_type or auth.provider_type
+            
+            if auth_provider_id and auth_provider_type:
+                auth_requirement = {
+                    "provider_id": auth_provider_id,
+                    "provider_type": auth_provider_type,
+                    "oauth2": {
+                        "scopes": list(all_scopes)
+                    }
+                }
+                if auth_id:
+                    auth_requirement["id"] = auth_id
+                else:
+                    auth_requirement["id"] = None
+                log.info(f"{auth_requirement=}")
+                auth_result = client.auth.authorize(auth_requirement=auth_requirement, user_id=user.id)
+            
+            # Add tool regardless of auth result
+            arcade_tools.append(
+                ToolUserResponse(
+                    **{
+                        "id": f"arcade:{idx}",
+                        "user_id": f"arcade:{idx}",
+                        "name": tool_kit.get('toolkit'),
+                        "meta": {
+                            "description": tool_kit.get('description'),
+                            "auth_completed": True if auth_result and auth_result.status == "completed" else (True if not auth_result else False),
+                            "auth_url": auth_result.url if auth_result else None,
+                        },
+                        "access_control": None,
+                        "updated_at": int(time.time()),
+                        "created_at": int(time.time()),
+                    }   
+                )
+            )
+            print(f"[DEBUG] Added tool: {tool_kit.get('toolkit')}")
+    
+    return arcade_tools
