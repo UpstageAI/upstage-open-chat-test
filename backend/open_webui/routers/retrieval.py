@@ -41,6 +41,7 @@ from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
 # Document loaders
 from open_webui.retrieval.loaders.main import Loader
 from open_webui.retrieval.loaders.youtube import YoutubeLoader
+from open_webui.retrieval.upstage_parser import generate_upstage_document_parsing
 
 # Web search engines
 from open_webui.retrieval.web.main import SearchResult
@@ -75,7 +76,6 @@ from open_webui.retrieval.utils import (
     query_collection_with_hybrid_search,
     query_doc,
     query_doc_with_hybrid_search,
-    generate_upstage_document_parsing,
 )
 from open_webui.utils.misc import (
     calculate_sha256_string,

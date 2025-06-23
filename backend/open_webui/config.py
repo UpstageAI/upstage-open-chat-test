@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Generic, Optional, TypeVar
 from urllib.parse import urlparse
+from .arcade_tools import ARCADE_TOOLS_TO_DISPLAY
+
 
 import requests
 from pydantic import BaseModel
@@ -986,96 +988,6 @@ ARCADE_TOOLS_CONFIG = PersistentConfig(
     "arcade.tools_config",
     [],
 )
-
-ARCADE_TOOLS_TO_DISPLAY = {
-    "Google Calendar": [
-        "Google.ListCalendars",
-        "Google.CreateEvent",
-        "Google.ListEvents",
-        "Google.UpdateEvent",
-        "Google.DeleteEvent",
-        "Google.FindTimeSlotsWhenEveryoneIsFree",
-    ],
-    "Google Contacts": [
-        "Google.SearchContactsByEmail",
-        "Google.SearchContactsByName",
-        "Google.CreateContact",
-    ],
-    "Google Docs": [
-        "Google.GetDocumentById",
-        "Google.InsertTextAtEndOfDocument",
-        "Google.CreateBlankDocument",
-        "Google.CreateDocumentFromText",
-    ],
-    "Google Gmail": [
-        "Google.SendEmail",
-        "Google.SendDraftEmail",
-        "Google.WriteDraftEmail",
-        "Google.UpdateDraftEmail",
-        "Google.DeleteDraftEmail",
-        "Google.TrashEmail",
-        "Google.ListDraftEmails",
-        "Google.ListEmailsByHeader",
-        "Google.ListEmails",
-        "Google.SearchThreads",
-        "Google.ListThreads",
-        "Google.GetThread",
-    ],
-    # "Web": [
-    #     "Web.ScrapeUrl",
-    #     "Web.CrawlWebsite",
-    #     "Web.GetCrawlStatus",
-    #     "Web.GetCrawlData",
-    #     "Web.CancelCrawl",
-    #     "Web.MapWebsite",
-    # ],
-    "Outlook Calendar": [
-        "Microsoft.CreateEvent",
-        "Microsoft.GetEvent",
-        "Microsoft.ListEventsInTimeRange",
-    ],
-    "Outlook Mail": [
-        "Microsoft.CreateDraftEmail",
-        "Microsoft.UpdateDraftEmail",
-        "Microsoft.SendDraftEmail",
-        "Microsoft.CreateAndSendEmail",
-        "Microsoft.ReplyToEmail",
-        "Microsoft.ListEmails",
-        "Microsoft.ListEmailsInFolder",
-    ],
-    "Notion": [
-        "NotionToolkit.GetPageContentById",
-        "NotionToolkit.GetPageContentByTitle",
-        "NotionToolkit.CreatePage",
-        "NotionToolkit.SearchByTitle",
-        "NotionToolkit.GetObjectMetadata",
-        "NotionToolkit.GetWorkspaceStructure",
-    ],
-    "Youtube": [
-        "Search.SearchYoutubeVideos",
-        "Search.GetYoutubeVideoDetails",
-    ],
-    "Slack": [
-        "Slack.SendDmToUser",
-        "Slack.SendMessageToChannel",
-        "Slack.GetMembersInConversationById",
-        "Slack.GetMembersInChannelByName",
-        "Slack.GetMessagesInConversationById",
-        "Slack.GetMessagesInChannelByName",
-        "Slack.GetMessagesInDirectMessageConversationByUsername",
-        "Slack.GetMessagesInMultiPersonDmConversationByUsernames",
-        "Slack.GetConversationMetadataById",
-        "Slack.GetChannelMetadataByName",
-        "Slack.GetDirectMessageConversationMetadataByUsername",
-        "Slack.ListConversationsMetadata",
-        "Slack.ListPublicChannelsMetadata",
-        "Slack.ListPrivateChannelsMetadata",
-        "Slack.ListGroupDirectMessageConversationsMetadata",
-        "Slack.ListDirectMessageConversationsMetadata",
-        "Slack.GetUserInfoById",
-        "Slack.ListUsers",
-    ],
-}
 
 
 ####################################
