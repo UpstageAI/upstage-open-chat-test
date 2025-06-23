@@ -91,7 +91,7 @@ def upload_file(
     internal: bool = False,
     user=Depends(get_verified_user),
 ):
-    from open_webui.retrieval.utils import generate_upstage_document_parsing_async
+    from open_webui.retrieval.upstage_parser import generate_upstage_document_parsing_async
     log.info(f"file.content_type: {file.content_type}")
 
     if isinstance(metadata, str):
