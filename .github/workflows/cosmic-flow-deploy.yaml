@@ -34,6 +34,7 @@ jobs:
           # 현재 워크플로우가 GitHub Actions의 기본 토큰(GITHUB_TOKEN)을 사용해 푸시하면 다른 워크플로우가 트리거되지 않음
           GH_TOKEN: ${{ env.DEPLOY_TOKEN }}
         run: |
+          git push -f origin HEAD:release/dev/info-extract
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${{ env.GH_TOKEN }}" \
@@ -44,7 +45,7 @@ jobs:
                 "config_path": "cosmic.yaml",
                 "cosmic_branch": "main",
                 "source_repo": "${{ github.repository }}",
-                "source_ref": "${{ github.ref }}",
+                "source_ref": "release/dev/openup",
                 "source_sha": "${{ github.sha }}"
               }
             }'
