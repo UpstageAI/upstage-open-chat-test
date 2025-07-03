@@ -1,0 +1,42 @@
+name: openup.upstage.ai - 1. 코스믹 dev 환경으로 배포 트리거
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-cosmic-flow-to-dev:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_TOKEN: ${{ secrets.DEPLOYMENT_USER_TOKEN }} # 배포용 토큰
+      DEPLOY_USER: ${{ secrets.DEPLOYMENT_USER }} # 배포용 사용자명
+      DEPLOY_EMAIL: ${{ secrets.DEPLOYMENT_USER_EMAIL }} # 배포용 이메일
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 전체 커밋 히스토리 가져오기
+          user-name: ${{ env.DEPLOY_USER }} # 환경변수에서 사용자명 가져오기
+          user-email: ${{ env.DEPLOY_EMAIL }} # 환경변수에서 이메일 가져오기
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "${{ env.DEPLOY_USER }}"
+          git config --global user.email "${{ env.DEPLOY_EMAIL }}"
+
+      - name: Trigger API deployment to dev tier
+        env:
+          # 현재 워크플로우가 GitHub Actions의 기본 토큰(GITHUB_TOKEN)을 사용해 푸시하면 다른 워크플로우가 트리거되지 않음
+          GH_TOKEN: ${{ env.DEPLOY_TOKEN }}
+        run: |
+          git push -f origin HEAD:release/dev/info-extract
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer ${{ env.GH_TOKEN }}" \
+            https://api.github.com/repos/UpstageAI/cosmic-flow/actions/workflows/cosmic-reusable-workflow-green.yaml/dispatches \
+            -d '{"config_path":"cosmic.yaml", "cosmic_branch":"main"}'

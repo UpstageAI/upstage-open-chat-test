@@ -1,0 +1,36 @@
+projects:
+  - name: openup
+    projectGroup: team-openup
+    projectNamespace: openup
+    projectRootPath: ./
+    build:
+      buildImage:
+        dockerContextPath: "./"
+        dockerfilePath: "./Dockerfile"
+        dockerBuildOptions: "--platform linux/amd64 --build-arg PROJECT_NAME=openup"
+    deploy:
+      default:
+        enableHttpScaledObject: false
+        healthCheckPath: /
+        containerPort: 8000
+        ingressReadTimeoutSec: "600"
+        ingressConnectTimeoutSec: "180"
+        phase:
+          prod:
+            clusters:
+              - cosmic-prod
+            noticeSlackChannelIdList:
+              # 추후에 테스트 후 아래 채널 다시 등록 예정
+              # - C08780WHNMA # up-product-information-extract
+              - C082HDQAETZ # feed-upstage-deployment-notification
+            replicaCount: 3
+            requestCpu: 2000m
+            requestMemory: 4096Mi
+            limitCpu: 2000m
+            limitMemory: 4096Mi
+            needApprove: false
+            ingressHosts:
+              - openup.upstage.ai
+          dev:
+            clusters:
+              - cosmic-prod
