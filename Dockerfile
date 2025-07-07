@@ -20,29 +20,6 @@ ARG BUILD_HASH=dev-build
 ARG UID=0
 ARG GID=0
 
-######## Dependencies stage ########
-FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS deps
-WORKDIR /app
-
-# npm 설정 최적화
-RUN npm config set registry https://registry.npmjs.org/
-RUN npm config set fund false
-RUN npm config set audit false
-RUN npm config set update-notifier false
-RUN npm config set fetch-retry-maxtimeout 60000
-RUN npm config set fetch-retry-mintimeout 10000
-RUN npm config set fetch-retries 5
-RUN npm config set maxsockets 5
-RUN npm config set timeout 300000
-RUN npm config set prefer-offline true
-
-# GitHub 관련 설정 비활성화
-RUN npm config set @github:registry https://registry.npmjs.org/
-RUN npm config set //npm.pkg.github.com/:_authToken ""
-
-COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline --no-audit --no-fund --maxsockets 5 --fetch-retries 5 --fetch-retry-mintimeout 10000 --fetch-retry-maxtimeout 60000 --timeout 300000
-
 ######## WebUI frontend ########
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
@@ -52,9 +29,17 @@ WORKDIR /app
 # to store git revision in build
 RUN apk add --no-cache git
 
-# 의존성 복사
-COPY --from=deps /app/node_modules ./node_modules
+# npm 설정 최적화 (네트워크 타임아웃 및 재시도 설정)
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm config set fetch-retry-maxtimeout 60000
+RUN npm config set fetch-retry-mintimeout 10000
+RUN npm config set fetch-retries 5
+RUN npm config set maxsockets 5
+
 COPY package.json package-lock.json ./
+
+# npm ci 실행 (네트워크 최적화 옵션 포함)
+RUN npm ci --no-audit --no-fund --maxsockets 5 --fetch-retries 5 --fetch-retry-mintimeout 10000 --fetch-retry-maxtimeout 60000
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
