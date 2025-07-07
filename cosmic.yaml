@@ -10,6 +10,7 @@ projects:
         dockerBuildOptions: "--platform linux/amd64 --build-arg PROJECT_NAME=openup --network=host"
     deploy:
       default:
+        helmChartBase: openup-deploy
         enableHttpScaledObject: false
         healthCheckPath: /
         containerPort: 8000
@@ -23,11 +24,11 @@ projects:
               # 추후에 테스트 후 아래 채널 다시 등록 예정
               # - C08780WHNMA # up-product-information-extract
               - C082HDQAETZ # feed-upstage-deployment-notification
-            replicaCount: 3
-            requestCpu: 2000m
-            requestMemory: 4096Mi
-            limitCpu: 2000m
-            limitMemory: 4096Mi
+            replicaCount: 1
+            requestCpu: 4000m
+            requestMemory: 12Gi
+            limitCpu: 4000m
+            limitMemory: 12Gi
             needApprove: false
             ingressHosts:
               - openup.upstage.ai
