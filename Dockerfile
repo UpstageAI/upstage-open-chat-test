@@ -29,8 +29,17 @@ WORKDIR /app
 # to store git revision in build
 RUN apk add --no-cache git
 
+# npm 설정 최적화 (네트워크 타임아웃 및 재시도 설정)
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm config set fetch-retry-maxtimeout 60000
+RUN npm config set fetch-retry-mintimeout 10000
+RUN npm config set fetch-retries 5
+RUN npm config set maxsockets 5
+
 COPY package.json package-lock.json ./
-RUN npm ci
+
+# npm ci 실행 (네트워크 최적화 옵션 포함)
+RUN npm ci --no-audit --no-fund --maxsockets 5 --fetch-retries 5 --fetch-retry-mintimeout 10000 --fetch-retry-maxtimeout 60000
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
