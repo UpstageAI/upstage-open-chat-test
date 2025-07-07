@@ -36,4 +36,4 @@ projects:
             clusters:
               - cosmic-prod
             secretEnv:
-              DAUM_API_KEY: DEV_DAUM_API_KEY
+              DAUM_API_KEY: DEV_OPENUP_DAUM_API_KEY
