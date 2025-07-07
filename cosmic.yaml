@@ -40,6 +40,7 @@ projects:
               OPENID_PROVIDER_URL: "https://accounts.google.com/.well-known/openid-configuration"
               ENABLE_UPSTAGE_API: "true"
               UPSTAGE_API_BASE_URL: "https://api.upstage.ai/v1"
+              GOOGLE_REDIRECT_URI: https://openup.upstage.ai/oauth/google/callback
               RAG_EMBEDDING_ENGINE: "upstage"
               RAG_EMBEDDING_MODEL: "embedding-passage"
               RAG_EMBEDDING_BATCH_SIZE: "10"
@@ -83,6 +84,7 @@ projects:
               OPENID_PROVIDER_URL: "https://accounts.google.com/.well-known/openid-configuration"
               ENABLE_UPSTAGE_API: "true"
               UPSTAGE_API_BASE_URL: "https://api.upstage.ai/v1"
+              GOOGLE_REDIRECT_URI: https://dev-openup.cosmic.upstage.ai/oauth/google/callback
               RAG_EMBEDDING_ENGINE: "upstage"
               RAG_EMBEDDING_MODEL: "embedding-passage"
               RAG_EMBEDDING_BATCH_SIZE: "10"
