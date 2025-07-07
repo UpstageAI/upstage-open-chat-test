@@ -18,6 +18,8 @@ projects:
         ingressConnectTimeoutSec: "180"
         phase:
           prod:
+            ingressHosts:
+              - openup.upstage.ai
             clusters:
               - cosmic-prod
             noticeSlackChannelIdList:
@@ -30,11 +32,13 @@ projects:
             limitCpu: 4000m
             limitMemory: 12Gi
             needApprove: false
-            ingressHosts:
-              - openup.upstage.ai
           dev:
+            ingressHosts:
+              - dev-openup.cosmic.upstage.ai
             clusters:
               - cosmic-prod
+            noticeSlackChannelIdList:
+              - C094MJG1TGU
             secretEnv:
               DAUM_API_KEY: DEV_OPENUP_DAUM_API_KEY
               GOOGLE_CLIENT_SECRET: OPENUP_GOOGLE_CLIENT_SECRET
