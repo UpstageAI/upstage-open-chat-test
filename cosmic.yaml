@@ -13,7 +13,7 @@ projects:
         helmChartBase: openup-deploy
         enableHttpScaledObject: false
         healthCheckPath: /
-        containerPort: 8000
+        containerPort: 8080
         ingressReadTimeoutSec: "600"
         ingressConnectTimeoutSec: "180"
         phase:
@@ -23,15 +23,21 @@ projects:
             clusters:
               - cosmic-prod
             noticeSlackChannelIdList:
-              # 추후에 테스트 후 아래 채널 다시 등록 예정
-              # - C08780WHNMA # up-product-information-extract
-              - C082HDQAETZ # feed-upstage-deployment-notification
+              - C094MJG1TGU
             replicaCount: 1
             requestCpu: 4000m
             requestMemory: 12Gi
             limitCpu: 4000m
             limitMemory: 12Gi
             needApprove: false
+            env:
+              ACTIVE_PROFILE: dev
+            secretEnv:
+              DAUM_API_KEY: DEV_OPENUP_DAUM_API_KEY
+              GOOGLE_CLIENT_SECRET: OPENUP_GOOGLE_CLIENT_SECRET
+              UPSTAGE_API_KEY: OPENUP_UPSTAGE_API_KEY
+              TAVILY_API_KEY: OPENUP_TAVILY_API_KEY
+              ARCADE_API_KEY: OPENUP_ARCADE_API_KEY
           dev:
             ingressHosts:
               - dev-openup.cosmic.upstage.ai
@@ -39,6 +45,13 @@ projects:
               - cosmic-prod
             noticeSlackChannelIdList:
               - C094MJG1TGU
+            replicaCount: 1
+            requestCpu: 4000m
+            requestMemory: 12Gi
+            limitCpu: 4000m
+            limitMemory: 12Gi
+            env:
+              ACTIVE_PROFILE: dev
             secretEnv:
               DAUM_API_KEY: DEV_OPENUP_DAUM_API_KEY
               GOOGLE_CLIENT_SECRET: OPENUP_GOOGLE_CLIENT_SECRET
