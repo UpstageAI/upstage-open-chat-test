@@ -21,8 +21,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # 전체 커밋 히스토리 가져오기
-          user-name: ${{ env.DEPLOY_USER }} # 환경변수에서 사용자명 가져오기
-          user-email: ${{ env.DEPLOY_EMAIL }} # 환경변수에서 이메일 가져오기
 
       - name: Set up Git
         run: |
