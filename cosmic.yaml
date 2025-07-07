@@ -7,7 +7,7 @@ projects:
       buildImage:
         dockerContextPath: "./"
         dockerfilePath: "./Dockerfile"
-        dockerBuildOptions: "--platform linux/amd64 --build-arg PROJECT_NAME=openup"
+        dockerBuildOptions: "--platform linux/amd64 --build-arg PROJECT_NAME=openup --build-arg NODE_OPTIONS=--max-old-space-size=4096"
     deploy:
       default:
         enableHttpScaledObject: false
